@@ -44,7 +44,7 @@ async function handler() {
 
             const title = $title.text().trim();
             const link = baseUrl + $title.attr('href');
-            const dateTime = $time.attr('dateTime');
+            const dateTime = $time.attr('datetime');
             const pubDate = dateTime ? parseDate(dateTime) : null;
 
             return {
