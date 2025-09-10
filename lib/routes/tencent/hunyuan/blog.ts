@@ -69,7 +69,7 @@ export const route: Route = {
                     },
                 })
         );
-        const data: HunyuanApiResponse = JSON.parse(response);
+        const data: HunyuanApiResponse = typeof response === 'string' ? JSON.parse(response) : response;
         const items = data.data.items.map((item) => ({
             title: item.title,
             link: item.url,
