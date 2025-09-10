@@ -48,23 +48,27 @@ export const route: Route = {
     handler: async () => {
         const apiUrl = 'https://api.hunyuan.tencent.com/api/vision_platform/public/auditOpenAPI/dynamic/list';
 
-        const response = await cache.tryGet(apiUrl, async () => await ofetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
-                    Accept: 'application/json, text/plain, */*',
-                    'Content-Type': 'application/json',
-                    'X-Source': 'web',
-                    withCredentials: 'true',
-                },
-                body: {
-                    page_id: 1,
-                    page_size: 20,
-                    key: '',
-                    order_by: 'published_at',
-                    order_dir: 'desc',
-                },
-            }));
+        const response = await cache.tryGet(
+            apiUrl,
+            async () =>
+                await ofetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
+                        Accept: 'application/json, text/plain, */*',
+                        'Content-Type': 'application/json',
+                        'X-Source': 'web',
+                        withCredentials: 'true',
+                    },
+                    body: {
+                        page_id: 1,
+                        page_size: 20,
+                        key: '',
+                        order_by: 'published_at',
+                        order_dir: 'desc',
+                    },
+                })
+        );
         const data: HunyuanApiResponse = JSON.parse(response);
         const items = data.data.items.map((item) => ({
             title: item.title,
