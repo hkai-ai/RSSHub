@@ -1,7 +1,7 @@
 import { Route } from '@/types';
-import got from '@/utils/got';
 import { load } from 'cheerio';
 import { parseDate } from '@/utils/parse-date';
+import { getPuppeteerPage } from '@/utils/puppeteer';
 
 export const route: Route = {
     path: '/news',
@@ -10,7 +10,7 @@ export const route: Route = {
     parameters: {},
     features: {
         requireConfig: false,
-        requirePuppeteer: false,
+        requirePuppeteer: true,
         antiCrawler: false,
         supportBT: false,
         supportPodcast: false,
@@ -25,15 +25,12 @@ async function handler() {
     const rootUrl = 'https://x.ai';
     const currentUrl = `${rootUrl}/news`;
 
-    const response = await got({
-        method: 'get',
-        url: currentUrl,
-        headers: {
-            'User-Agent': 'RSSHub/1.0.0 (+https://docs.rsshub.app/)',
-        },
-    });
+    const { page, destory } = await getPuppeteerPage(currentUrl, { gotoConfig: { waitUntil: 'networkidle0' } });
 
-    const $ = load(response.data);
+    const html = await page.content();
+    await destory();
+
+    const $ = load(html);
 
     // Extract featured article
     const featuredArticle = $('.border-border .group.relative').first();
