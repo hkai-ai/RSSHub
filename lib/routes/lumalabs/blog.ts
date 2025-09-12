@@ -5,7 +5,7 @@ import { parseDate } from '@/utils/parse-date';
 
 export const route: Route = {
     path: '/blog/:category?',
-    categories: ['tech'],
+    categories: ['programming'],
     example: '/lumalabs/blog/news',
     parameters: { category: 'Blog category, defaults to news' },
     features: {
@@ -38,8 +38,8 @@ async function handler(ctx) {
     // Extract articles from the grid container
     const articles = $(String.raw`.mx-auto.grid.w-full.grid-cols-1.gap-6.md\:grid-cols-2.lg\:grid-cols-3 > div`)
         .toArray()
-        .map((item) => {
-            item = $(item);
+        .map((ele) => {
+            const item = $(ele);
 
             // Extract title
             const title = item.find('h3').text().trim();
@@ -48,7 +48,10 @@ async function handler(ctx) {
             const dateText = item.find('p.mb-2.text-sm.font-medium').text().trim();
 
             // Extract description
-            const description = item.find(String.raw`.text-sm.text-black\/70 div p`).text().trim();
+            const description = item
+                .find(String.raw`.text-sm.text-black\/70 div p`)
+                .text()
+                .trim();
 
             // Extract link from the "Read article" link
             const relativeLink = item.find('a[href^="/blog/news/"]').attr('href');
