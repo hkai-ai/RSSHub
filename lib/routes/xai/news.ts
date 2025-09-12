@@ -5,7 +5,7 @@ import { getPuppeteerPage } from '@/utils/puppeteer';
 
 export const route: Route = {
     path: '/news',
-    categories: ['tech'],
+    categories: ['programming'],
     example: '/xai/news',
     parameters: {},
     features: {
