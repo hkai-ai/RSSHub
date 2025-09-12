@@ -63,7 +63,9 @@ async function handler(ctx) {
     // Filter by topic tag if specified
     if (topicTag && topic) {
         items = items.filter((item) => {
-            if (!item.tags) {return false;}
+            if (!item.tags) {
+                return false;
+            }
             try {
                 const tags = JSON.parse(item.tags);
                 return tags.includes(topicTag);
