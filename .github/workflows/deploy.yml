@@ -1,0 +1,30 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v1.2.2
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.PRIVATE_KEY }}
+        port: ${{ secrets.PORT }}
+        script: |
+          # 拉取源代码
+          cd /home/lighthouse/docker-apps/RSSHub
+          git pull
+
+          # 构建镜像
+          sudo docker build --build-arg PUPPETEER_SKIP_DOWNLOAD=0 -t rsshub:latest .
+
+          # 启动服务
+          cd /home/lighthouse/docker-apps/rsshub-compose
+          sudo docker-compose up -d
