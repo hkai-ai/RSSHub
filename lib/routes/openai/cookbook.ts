@@ -1,8 +1,8 @@
 import { Route } from '@/types';
-import cache from '@/utils/cache';
-import { load } from 'cheerio';
+import { parseDate } from '@/utils/parse-date';
 import logger from '@/utils/logger';
 import ofetch from '@/utils/ofetch';
+import { parse } from 'yaml';
 
 export const route: Route = {
     path: '/cookbook',
@@ -24,50 +24,40 @@ export const route: Route = {
 async function handler() {
     const rootUrl = 'https://cookbook.openai.com';
     const currentUrl = `${rootUrl}/`;
+    const registryUrl = 'https://raw.githubusercontent.com/openai/openai-cookbook/refs/heads/main/registry.yaml';
 
     try {
-        const response = await ofetch(currentUrl);
-        const $ = load(response);
+        const response = await ofetch(registryUrl, { parseResponse: (txt) => txt });
+        const registry = parse(response) as Array<{
+            title: string;
+            path: string;
+            date: string;
+            authors?: string[];
+            tags?: string[];
+            archived?: boolean;
+        }>;
 
-        let items = $('[class="min-h-[90vh] mt-4"] .grid a')
-            .toArray()
-            .map((element) => {
-                const $element = $(element);
-                const $title = $element.find('div.font-semibold.text-sm.text-primary.line-clamp-1.overflow-ellipsis');
-                const $date = $element.find(String.raw`span.text-xs.text-muted-foreground.md\:w-24.text-end`);
-                const $author = $element.find('p:contains("OpenAI")');
-                const $tags = $element.find('span[style^="color:"]');
+        const items = registry
+            .filter((entry) => !entry.archived)
+            .toSorted((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 50)
+            .map((entry) => {
+                const pathWithoutExtension = entry.path.replace(/\.(ipynb|md)$/, '');
 
                 return {
-                    title: $title.text().trim(),
-                    link: `${rootUrl}/${$element.attr('href')}`,
-                    pubDate: $date.text().trim(),
-                    author: $author.text().replace('OpenAI', '').trim(),
-                    category: $tags.toArray().map((tag) => $(tag).text().trim()),
+                    title: entry.title,
+                    link: `${rootUrl}/${pathWithoutExtension}`,
+                    description: `作者: ${entry.authors?.join(', ') || 'OpenAI'}<br>标签: ${entry.tags?.join(', ') || ''}`,
+                    pubDate: parseDate(entry.date),
+                    author: entry.authors?.join(', ') || 'OpenAI',
+                    category: entry.tags || [],
                 };
             });
-
-        items = (
-            await Promise.all(
-                items.map((item) =>
-                    cache.tryGet(item.link, async () => {
-                        try {
-                            const detailResponse = await ofetch(item.link);
-                            const $ = load(detailResponse);
-
-                            item.description = $(String.raw`article.prose.prose-sm.sm\:prose-base.max-w-none.dark\:prose-invert`).html();
-                            return item;
-                        } catch {
-                            return { ...item, description: '' };
-                        }
-                    })
-                )
-            )
-        ).filter((item) => item?.description);
 
         return {
             title: 'OpenAI Cookbook',
             link: currentUrl,
+            description: 'OpenAI Cookbook 提供了大量使用 OpenAI API 的实用指南和示例代码',
             item: items,
         };
     } catch (error) {
