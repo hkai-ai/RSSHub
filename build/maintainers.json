@@ -3976,10 +3976,12 @@
     "nczitzk"
   ],
   "/hupu/dept/:category?": [
-    "nczitzk"
+    "nczitzk",
+    "hyoban"
   ],
   "/hupu/:category?": [
-    "nczitzk"
+    "nczitzk",
+    "hyoban"
   ],
   "/hust/gs/:category{.+}?": [
     "nczitzk"
@@ -5408,6 +5410,9 @@
   ],
   "/nankai/cc/:type?": [
     "vicguo0724"
+  ],
+  "/nankai/graduate/:type?": [
+    "ladeng07"
   ],
   "/nankai/jwc": [
     "vicguo0724"
