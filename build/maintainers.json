@@ -304,6 +304,9 @@
   "/aastocks/news/top": [
     "anonymous"
   ],
+  "/abajournal/news": [
+    "your-username"
+  ],
   "/abc/:category{.+}?": [
     "nczitzk",
     "pseudoyu"

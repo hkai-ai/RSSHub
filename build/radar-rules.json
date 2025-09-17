@@ -3046,6 +3046,19 @@
       }
     ]
   },
+  "abajournal.com": {
+    "_name": "ABA Journal",
+    ".": [
+      {
+        "title": "Latest News",
+        "docs": "https://docs.rsshub.app/routes/traditional-media",
+        "source": [
+          "/news"
+        ],
+        "target": "/abajournal/news"
+      }
+    ]
+  },
   "abc.net.au": {
     "_name": "ABC News",
     ".": [
