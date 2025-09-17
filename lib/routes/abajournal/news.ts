@@ -43,7 +43,9 @@ async function handler() {
         const title = $link.text().trim();
         let link = $link.attr('href');
 
-        if (!title || !link || title.length < 5) {return;}
+        if (!title || !link || title.length < 5) {
+            return;
+        }
 
         // 确保链接是完整的URL
         if (!link.startsWith('http')) {
