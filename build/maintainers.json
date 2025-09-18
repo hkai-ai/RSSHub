@@ -6671,6 +6671,9 @@
   "/qwen/research": [
     "claude-code"
   ],
+  "/qwenlm/blog/:lang?": [
+    "Kjasn"
+  ],
   "/qztc/home/:type": [
     "iQNRen"
   ],
@@ -7581,7 +7584,9 @@
   "/supchina/podcasts": [
     "nczitzk"
   ],
-  "/surfshark/blog/:category{.+}?": [],
+  "/surfshark/blog/:category{.+}?": [
+    "nczitzk"
+  ],
   "/sustainabilitymag/articles": [
     "mintyfrankie"
   ],
@@ -7772,7 +7777,7 @@
   "/telegram/blog": [
     "fengkx"
   ],
-  "/telegram/channel/:entityName/:messageId": [
+  "/telegram/media/:entityName/:messageId": [
     "synchrone"
   ],
   "/telegram/channel/:username/:routeParams?": [
