@@ -29,102 +29,133 @@ export const route: Route = {
 };
 
 async function handler() {
-    const baseUrl = 'https://abajournal.com';
+    const baseUrl = 'https://www.abajournal.com';
     const url = `${baseUrl}/news`;
 
-    const response = await ofetch(url);
-    const $ = load(response);
+    const response = await cache.tryGet(
+        url,
+        async () => await ofetch(url),
+        5 * 60 * 1000
+    ); // Cache for 5 minutes
 
+    const $ = load(response);
     const items = [];
 
-    // 查找带有链接的标题元素
-    $('h1 a, h2 a, h3 a, h4 a').each((_, element) => {
-        const $link = $(element);
-        const title = $link.text().trim();
-        let link = $link.attr('href');
+    // Parse articles from the specific structure in the HTML
+    $('.col-xs-12.col-md-8')
+        .find('h3.article_list_headline')
+        .each((_, element) => {
+            const $headline = $(element);
+            const $link = $headline.find('a');
+            const title = $link.text().trim();
+            let link = $link.attr('href');
 
-        if (!title || !link || title.length < 5) {
-            return;
-        }
+            if (!title || !link) {
+                return;
+            }
 
-        // 确保链接是完整的URL
-        if (!link.startsWith('http')) {
-            link = link.startsWith('/') ? `${baseUrl}${link}` : `${baseUrl}/${link}`;
-        }
+            // Handle relative URLs and external links
+            if (link.startsWith('/')) {
+                link = `${baseUrl}${link}`;
+            } else if (!link.startsWith('http')) {
+                link = `${baseUrl}/${link}`;
+            }
 
-        // 查找发布日期
-        const $parent = $link.closest('article, li, div, section');
-        const dateText =
-            $parent.find('time').attr('datetime') || $parent.find('time').text().trim() || $parent.find('.date').text().trim() || $parent.text().match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},?\s+\d{4}/)?.[0];
+            // Find the category (superscript above headline)
+            const $category = $headline.prev('.article_list_superscript');
+            const category = $category.text().trim();
 
-        items.push({
-            title,
-            link,
-            pubDate: dateText ? parseDate(dateText) : new Date(),
-            guid: link,
-        });
-    });
+            // Find the dateline (after headline)
+            const $dateline = $headline.next('.article_list_dateline');
+            const dateText = $dateline.text().trim();
 
-    // 去重并限制数量
-    const uniqueItems = [];
-    const seenLinks = new Set();
-
-    for (const item of items) {
-        if (!seenLinks.has(item.link)) {
-            seenLinks.add(item.link);
-            uniqueItems.push(item);
-        }
-    }
-
-    // 获取文章详细内容
-    const enrichedItems = await Promise.all(
-        uniqueItems.slice(0, 15).map((item) =>
-            cache.tryGet(item.link, async () => {
+            // Parse date: format like "Sep 17, 2025 12:04 PM CDT"
+            let pubDate = new Date();
+            if (dateText) {
                 try {
-                    const articleResponse = await ofetch(item.link);
-                    const $article = load(articleResponse);
-
-                    // 移除不需要的元素
-                    $article('script, style, nav, footer, .advertisement, .ad, .sidebar').remove();
-
-                    // 提取正文内容
-                    let content = $article('.article-content').html() || $article('.entry-content').html() || $article('.post-content').html() || $article('article .content').html() || $article('.story-body').html();
-
-                    // 如果没找到特定的内容区域，尝试提取article标签内容
-                    if (!content) {
-                        const $articleTag = $article('article');
-                        if ($articleTag.length) {
-                            $articleTag.find('nav, footer, .meta, .share').remove();
-                            content = $articleTag.html();
-                        }
-                    }
-
-                    // 获取更准确的发布日期
-                    const articleDate = $article('meta[property="article:published_time"]').attr('content') || $article('meta[name="publishdate"]').attr('content') || $article('time').attr('datetime');
-
-                    if (articleDate) {
-                        item.pubDate = parseDate(articleDate);
-                    }
-
-                    // 获取作者信息
-                    const author = $article('meta[name="author"]').attr('content') || $article('.author').text().trim() || $article('.byline').text().trim();
-
-                    if (author) {
-                        item.author = author;
-                    }
-
-                    // 获取分类
-                    const category = $article('meta[property="article:section"]').attr('content') || $article('.category').text().trim();
-
-                    if (category) {
-                        item.category = category;
-                    }
+                    pubDate = parseDate(dateText);
                 } catch {
-                    // Silently handle fetch errors
+                    // If parsing fails, use current date
+                    pubDate = new Date();
                 }
+            }
 
-                return item;
-            })
+            items.push({
+                title,
+                link,
+                pubDate,
+                category: category || undefined,
+                guid: link,
+            });
+        });
+
+    // Get detailed content for each article
+    const enrichedItems = await Promise.all(
+        items.slice(0, 20).map(
+            (item) =>
+                cache.tryGet(
+                    `content:${item.link}`,
+                    async () => {
+                        try {
+                            // Skip external links for content fetching
+                            if (!item.link.includes('abajournal.com')) {
+                                return {
+                                    ...item,
+                                    description: `Category: ${item.category || 'General'}`,
+                                };
+                            }
+
+                            const articleResponse = await ofetch(item.link);
+                            const $article = load(articleResponse);
+
+                            // Remove unwanted elements
+                            $article('script, style, nav, footer, .advertisement, .ad, .sidebar, .masthead, .toolbar').remove();
+
+                            // Try to find article content
+                            let content = $article('.article-content').html() || $article('.entry-content').html() || $article('.post-content').html() || $article('.story-body').html() || $article('article .content').html();
+
+                            // If no specific content found, try article body
+                            if (!content) {
+                                const $articleTag = $article('article');
+                                if ($articleTag.length) {
+                                    $articleTag.find('nav, footer, .meta, .share, .crumbs, .toolbar').remove();
+                                    content = $articleTag.html();
+                                }
+                            }
+
+                            // Extract author information
+                            const author = $article('meta[name="author"]').attr('content') || $article('.author').text().trim() || $article('.byline').text().trim() || $article('[class*="author"]').first().text().trim();
+
+                            // Get more accurate publication date from meta tags
+                            const metaDate =
+                                $article('meta[property="article:published_time"]').attr('content') ||
+                                $article('meta[name="publishdate"]').attr('content') ||
+                                $article('meta[name="date"]').attr('content') ||
+                                $article('time[datetime]').attr('datetime');
+
+                            if (metaDate) {
+                                try {
+                                    item.pubDate = parseDate(metaDate);
+                                } catch {
+                                    // Keep original date if meta date parsing fails
+                                }
+                            }
+
+                            return {
+                                ...item,
+                                description: content || `Category: ${item.category || 'General'}`,
+                                author: author || undefined,
+                            };
+                        } catch {
+                            // Return basic item if content fetching fails
+                            return {
+                                ...item,
+                                description: `Category: ${item.category || 'General'}`,
+                            };
+                        }
+                    },
+                    30 * 60 * 1000
+                ) // Cache article content for 30 minutes
         )
     );
 
