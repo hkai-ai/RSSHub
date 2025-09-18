@@ -32,11 +32,7 @@ async function handler() {
     const baseUrl = 'https://www.abajournal.com';
     const url = `${baseUrl}/news`;
 
-    const response = await cache.tryGet(
-        url,
-        async () => await ofetch(url),
-        5 * 60 * 1000
-    ); // Cache for 5 minutes
+    const response = await cache.tryGet(url, async () => await ofetch(url), 5 * 60 * 1000); // Cache for 5 minutes
 
     const $ = load(response);
     const items = [];
