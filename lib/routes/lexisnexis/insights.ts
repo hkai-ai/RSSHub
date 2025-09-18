@@ -47,16 +47,22 @@ async function handler() {
                 const $tile = $(element);
 
                 // Skip promotional tiles (like free trial)
-                if ($tile.hasClass('free-trial')) {return;}
+                if ($tile.hasClass('free-trial')) {
+                    return;
+                }
 
                 // Find the main article link (with class 'title')
                 const $titleLink = $tile.find('a.title');
-                if (!$titleLink.length) {return;}
+                if (!$titleLink.length) {
+                    return;
+                }
 
                 const link = $titleLink.attr('href');
                 const title = $titleLink.text().trim();
 
-                if (!link || !title || title.length < 10) {return;}
+                if (!link || !title || title.length < 10) {
+                    return;
+                }
 
                 // Get category from button
                 let category = '';
