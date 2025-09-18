@@ -5316,6 +5316,19 @@
       }
     ]
   },
+  "americanbar.org": {
+    "_name": "American Bar Association",
+    ".": [
+      {
+        "title": "Law Practice Resources",
+        "docs": "https://docs.rsshub.app/routes/study",
+        "source": [
+          "/groups/law_practice/resources/:category"
+        ],
+        "target": "/americanbar/law-practice-resources/:category"
+      }
+    ]
+  },
   "amz123.com": {
     "_name": "Amz123",
     ".": [
@@ -16441,6 +16454,19 @@
       }
     ]
   },
+  "globallegalpost.com": {
+    "_name": "Global Legal Post",
+    ".": [
+      {
+        "title": "Topics",
+        "docs": "https://docs.rsshub.app/routes/new-media",
+        "source": [
+          "/topics/:topic"
+        ],
+        "target": "/globallegalpost/topics/:topic"
+      }
+    ]
+  },
   "gmcmonline.com": {
     "_name": "国门传媒在线",
     "chinacustoms": [
@@ -24177,6 +24203,19 @@
           "/news/categories/:category"
         ],
         "target": "/kuwaitlocal/:category"
+      }
+    ]
+  },
+  "kwm.com": {
+    "_name": "金杜律师事务所",
+    ".": [
+      {
+        "title": "人工智能专栏 - 最新文章",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/cn/zh/expertise/sectors/artificial-intelligence/artificial-intelligence-latest-thinking.html"
+        ],
+        "target": "/kwm/ai-latest-thinking"
       }
     ]
   },

@@ -523,6 +523,9 @@
   "/amazon/kindle/software-updates": [
     "EthanWng97"
   ],
+  "/americanbar/law-practice-resources/:category?": [
+    "nczitzk"
+  ],
   "/amz123/kx": [
     "defp"
   ],
@@ -3122,6 +3125,9 @@
   "/globallawreview/": [
     "nczitzk"
   ],
+  "/globallegalpost/topics/:topic": [
+    "claude-code"
+  ],
   "/gmcmonline/chinacustoms": [
     "nczitzk"
   ],
@@ -4755,6 +4761,9 @@
   "/kuwaitlocal/:category?": [
     "TonyRL"
   ],
+  "/kwm/ai-latest-thinking": [
+    ""
+  ],
   "/kyodonews/:language?/:keyword?": [
     "Rongronggg9"
   ],
@@ -4831,6 +4840,12 @@
   ],
   "/letterboxd/:username/watchlist": [
     "johan456789"
+  ],
+  "/lexisnexis/insights": [
+    "nczitzk"
+  ],
+  "/lexisnexis/pressroom": [
+    "nczitzk"
   ],
   "/lfsyd/home": [
     "auto-bot-ty"
