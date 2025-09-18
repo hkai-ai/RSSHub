@@ -190,7 +190,7 @@ export const getPuppeteerPage = async (
 /**
  * @returns Puppeteer page
  */
-export const getPuppeteerPageBypass = async (
+export const getPuppeteerPageNoUa = async (
     url: string,
     instanceOptions: {
         onBeforeLoad?: (page: Page, browser?: Browser) => Promise<void> | void;
@@ -202,7 +202,7 @@ export const getPuppeteerPageBypass = async (
 ) => {
     const options = {
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled', '--window-position=0,0', '--ignore-certificate-errors', '--ignore-certificate-errors-spki-list'],
-        headless: false,
+        headless: true,
         ignoreHTTPSErrors: true,
     };
 

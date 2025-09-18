@@ -1,7 +1,7 @@
 import { Route } from '@/types';
 import { load } from 'cheerio';
 import { parseDate } from '@/utils/parse-date';
-import { getPuppeteerPageBypass } from '@/utils/puppeteer';
+import { getPuppeteerPageNoUa } from '@/utils/puppeteer';
 import cache from '@/utils/cache';
 
 export const route: Route = {
@@ -35,7 +35,7 @@ async function handler() {
     return await cache.tryGet(
         currentUrl,
         async () => {
-            const { page, destory } = await getPuppeteerPageBypass(currentUrl, {
+            const { page, destory } = await getPuppeteerPageNoUa(currentUrl, {
                 gotoConfig: { waitUntil: 'domcontentloaded' },
             });
 

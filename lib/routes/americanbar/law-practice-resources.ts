@@ -1,6 +1,6 @@
 import { Route } from '@/types';
 import { parseDate } from '@/utils/parse-date';
-import { getPuppeteerPageBypass } from '@/utils/puppeteer';
+import { getPuppeteerPageNoUa } from '@/utils/puppeteer';
 import cache from '@/utils/cache';
 
 const categoryMap = {
@@ -79,7 +79,7 @@ export const route: Route = {
         const apiResponse: any = await cache.tryGet(
             cacheKey,
             async () => {
-                const { page, destory } = await getPuppeteerPageBypass(pageUrl, {
+                const { page, destory } = await getPuppeteerPageNoUa(pageUrl, {
                     onBeforeLoad: async (page) => {
                         await page.setRequestInterception(true);
                     },
