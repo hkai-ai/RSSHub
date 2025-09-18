@@ -39,6 +39,8 @@ async function handler() {
                 gotoConfig: { waitUntil: 'domcontentloaded' },
             });
 
+            await page.waitForSelector('.article-item', { timeout: 30000 });
+
             const html = await page.content();
             await destory();
 
