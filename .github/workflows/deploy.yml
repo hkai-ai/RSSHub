@@ -1,11 +1,16 @@
 name: Deploy to Server
 
 on:
-  workflow_run:
-    workflows: ['Test', 'Linter']
-    types: [completed]
-    branches: [master]
-  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/docker-release.yml'
+      - 'lib/**'
+      - '!lib/**/*.test.ts'
+      - 'Dockerfile'
+  workflow_dispatch: {}
+
 
 jobs:
   deploy:
