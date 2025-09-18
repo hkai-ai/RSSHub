@@ -5316,19 +5316,6 @@
       }
     ]
   },
-  "americanbar.org": {
-    "_name": "American Bar Association",
-    ".": [
-      {
-        "title": "Law Practice Resources",
-        "docs": "https://docs.rsshub.app/routes/study",
-        "source": [
-          "/groups/law_practice/resources/:category"
-        ],
-        "target": "/americanbar/law-practice-resources/:category"
-      }
-    ]
-  },
   "amz123.com": {
     "_name": "Amz123",
     ".": [
