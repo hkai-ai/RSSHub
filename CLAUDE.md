@@ -13,13 +13,6 @@ RSSHub is an open-source RSS aggregation platform built with Node.js and TypeScr
 pnpm dev                    # Start development server (watch mode)
 pnpm dev:cache             # Start with production cache settings
 
-# Testing
-pnpm test                  # Run format check + coverage tests
-pnpm vitest               # Run unit tests only
-pnpm vitest:watch         # Watch mode testing
-pnpm vitest:coverage      # Run tests with coverage
-pnpm vitest routes/github # Test specific route
-
 # Code Quality
 pnpm lint                 # Run ESLint (cache enabled)
 pnpm format              # Format with Prettier + ESLint fix
@@ -125,16 +118,28 @@ const items = await Promise.all(
 
 **Cache Warning**: Variables assigned outside `tryGet()` function won't be processed on cache hits
 
+#### RSS Route Caching Requirements
+- **MANDATORY for all RSS routes** - Every route MUST implement caching to avoid overwhelming target sites
+- **Recommended cache duration**: 300-3600 seconds (5 minutes to 1 hour) depending on content update frequency
+- **Always wrap main data fetching logic** in `cache.tryGet()` for the entire feed
+```typescript
+// Required pattern for all RSS routes
+return await cache.tryGet(currentUrl, async () => {
+    // All data fetching and processing logic here
+    return { title, link, description, item: items };
+}, 300); // 5-minute cache
+```
+- **Benefits**: Reduces server load, prevents rate limiting, improves response times, respects target site resources
+
 ## Route Registration
 
 Routes are automatically discovered and registered from `lib/routes/` - no manual registration needed. The system scans for exported `route` objects and `namespace` objects.
 
 ## Common Debugging
-
-- Add `?format=debug.json` to any route URL for debug output
-- Check `logs/` directory for application logs
-- Use `pnpm vitest routes/[namespace]` to test specific routes
 - Monitor console output during `pnpm dev` for errors
+- Add `?format=debug.json` to any route URL for debug output(Using ctx.set('json', obj) and must running with debugInfo=true)
+- Check `logs/` directory for application logs
+
 
 ## Data Fetching Priority
 
@@ -142,6 +147,17 @@ Routes are automatically discovered and registered from `lib/routes/` - no manua
 1. **ofetch** (preferred) - Use `@/utils/ofetch` for most HTTP requests
 2. **got** - Use `@/utils/got` for complex proxy/scraping scenarios
 3. **Puppeteer** - Only for JavaScript rendering or complex anti-bot situations
+
+### User-Agent Configuration
+- **ALWAYS use `config.ua`** - Import from `@/config` and use as User-Agent header
+- **Never hardcode User-Agent strings** - Use the centralized configuration
+- **Priority**: `config.ua` > custom UA > default browser UA
+```typescript
+import { config } from '@/config';
+// For HTTP requests
+headers: { 'User-Agent': config.ua }
+// Puppeteer automatically uses config.ua
+```
 
 ### Error Handling Best Practices
 ```typescript
@@ -154,14 +170,6 @@ try {
     throw new ConfigNotFoundError('Data source unavailable');
 }
 ```
-
-## Debugging and Development
-
-### Debug Output
-- **JSON Debug**: Add `?format=debug.json` to any route URL
-- **HTML Debug**: Add `?format={index}.debug.html` to route URL
-- Monitor `logs/` directory for application logs
-- Console output during `pnpm dev` shows real-time errors
 
 ### Testing Specific Routes
 ```bash
@@ -266,3 +274,4 @@ browser.close(); // At the end of handler
 - Format strings should avoid linebreaks in title/author fields
 - Convert intended linebreaks to `<br>` tags in `description` field
 - Trim whitespace from title/subtitle/author fields for RSS reader compatibility
+- Set reasonable caching for each RSS route whenever possible.
