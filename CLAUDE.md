@@ -136,6 +136,7 @@ import { art } from '@/utils/render';          // Template rendering
 - **No unused variables**: Remove or use all declared variables
 - **Import logger**: Always import `logger` from `@/utils/logger` for error logging
 - **Type annotations**: Always provide explicit types for arrays and objects
+- **CSS selector escaping**: Use `String.raw` template literals for complex CSS selectors
 
 ### Caching Best Practices
 ```typescript
@@ -388,18 +389,27 @@ try {
 - Unused variables (remove or use all declared variables)
 - Using `console.error` instead of `logger.error`
 - Missing logger import
+- CSS selector escaping issues
 
 **Solutions**:
 ```typescript
 // ✅ Correct: Import and use logger
 import logger from '@/utils/logger';
 
+// ✅ Correct: String.raw template for CSS selectors
+$(String.raw`.flex-1.min-w-0.max-w-[1120px]`).find(String.raw`.rounded-[16px]`)
+
 // ❌ Wrong: Unused variables
 const title = 'test'; // Never used
 const description = 'desc'; // Never used
-
-// ✅ Correct: Remove unused variables or use them
 ```
+
+**Development workflow**:
+1. Write code
+2. Run `pnpm lint --fix` for auto-fixes
+3. Check remaining warnings/errors
+4. Commit - hooks will run final checks
+5. If hooks fail, fix issues and retry
 
 ### 4. TypeScript Type Annotations
 **Problem**: Missing type annotations for arrays and objects
@@ -477,120 +487,20 @@ const date = parseDate(dateText, 'YYYY年MM月DD日');
 **Solution**: Fix all ESLint errors before committing. The hooks will:
 1. Run Prettier for formatting
 2. Run ESLint for code quality
-3. Fail if any ESLint errors remain
+3. Convert line endings (CRLF → LF)
+4. Fail if any ESLint errors remain
 
-### 7. ESLint Auto-Fix Experience
-**Problem**: CSS selector escaping causing ESLint warnings
-**Solution**: Use `String.raw` template literals for complex CSS selectors
+**Key insight**: Trust the pre-commit hooks to handle formatting and basic fixes automatically.
 
-**Common ESLint issues and fixes**:
-- **CSS selector escaping**: Use `String.raw`.flex-1.min-w-0.max-w-\[1120px\]`` instead of manual escaping
-- **Automatic fixes available**: Run `pnpm lint --fix` to auto-fix most issues
-- **Warnings vs Errors**: Warnings won't block commit, but errors will
-- **Pre-commit hooks**: Automatically run Prettier and ESLint, may modify code
+## Development Experience and Best Practices
 
-**Example fixes**:
-```typescript
-// ❌ Manual escaping (causes warnings)
-$('.flex-1.min-w-0.max-w-\\[1120px\\]').find('.rounded-\\[16px\\]')
+Based on real project experience, here are key insights for successful RSSHub route development:
 
-// ✅ String.raw template (clean)
-$(String.raw`.flex-1.min-w-0.max-w-[1120px]`).find(String.raw`.rounded-[16px]`)
-```
+### Route Development Checklist
 
-**Development workflow**:
-1. Write code
-2. Run `pnpm lint --fix` for auto-fixes
-3. Check remaining warnings/errors
-4. Commit - hooks will run final checks
-5. If hooks fail, fix issues and retry
-
-## Development Experience and Lessons Learned
-
-### Recent Project Experience: Notion Blog RSS Route
-
-#### Critical Lessons Learned
-
-### 1. Avoid Namespace Conflicts ⭐
-**Problem**: Initially used `notion` folder which conflicted with existing routes
-**Solution**: Used `nation.com` folder instead to avoid conflicts
-**Lesson**: Always check for existing folders before creating new routes. Use the full domain name as the folder name to prevent conflicts.
-
-### 2. Code Quality and ESLint Compliance ⭐
-**Problem**: Unused `ctx` parameter caused ESLint errors
-**Solution**: Removed unused parameters: `handler(ctx)` → `handler()`
-**Lesson**:
-- Remove all unused variables and parameters
-- Pre-commit hooks automatically catch and fix these issues
-- Run `pnpm lint --fix` before committing to auto-fix issues
-
-### 3. Caching Strategy Implementation ⭐
-**Success Pattern**: Implemented comprehensive caching
-```typescript
-// Cache the entire feed
-return await cache.tryGet(`${rootUrl}/blog`, async () => {
-    // Main data fetching logic
-}, 3600); // 1-hour cache
-
-// Cache individual article details
-const detailedItems = await Promise.all(
-    items.map((item) =>
-        cache.tryGet(item.link, async () => {
-            // Article detail fetching
-        })
-    )
-);
-```
-
-**Critical Requirements**:
-- **MANDATORY for all RSS routes** - Every route MUST implement caching
-- **Recommended duration**: 300-3600 seconds (5 minutes to 1 hour)
-- **Always wrap main data fetching logic** in `cache.tryGet()`
-- **Benefits**: Reduces server load, prevents rate limiting, improves response times
-
-### 4. Error Handling Best Practices
-**Implementation**: Added comprehensive try-catch blocks
-```typescript
-try {
-    const articleResponse = await ofetch(item.link, {
-        headers: { 'User-Agent': config.ua },
-    });
-    // Process response
-} catch (error) {
-    logger.error(`Failed to fetch article details for ${item.link}:`, error);
-    return item; // Graceful degradation
-}
-```
-
-**Lesson**: Always wrap network requests in try-catch blocks and use logger for error reporting.
-
-### 5. Technical Implementation Success
-**Correct Patterns Used**:
-- ✅ Used `ofetch` for HTTP requests
-- ✅ Used `cheerio` for HTML parsing
-- ✅ Used `parseDate()` for date parsing
-- ✅ Added proper TypeScript type annotations
-- ✅ Used `config.ua` for User-Agent
-- ✅ Imported logger for error handling
-
-### 6. Folder Structure and Naming
-**Lesson Learned**: Use specific domain names for folders to avoid conflicts
-- **Wrong**: `/lib/routes/notion/` (conflicts with existing)
-- **Correct**: `/lib/routes/nation.com/` (specific and unique)
-
-### 7. Pre-commit Hook Experience
-**Observation**: Pre-commit hooks automatically:
-- Fix formatting (Prettier)
-- Fix ESLint issues
-- Convert line endings (CRLF → LF)
-- Ensure code quality standards
-
-**Workflow**: Trust the pre-commit hooks to handle formatting and basic fixes.
-
-### 8. Development Checklist Update
-#### Before Starting New Route
+#### Before Starting
 - [ ] Check for existing folder names to avoid conflicts
-- [ ] Use full domain name as folder name
+- [ ] Use second-level domain as folder name (e.g., `github` instead of `github.com`)
 - [ ] Plan caching strategy
 
 #### During Implementation
@@ -605,12 +515,19 @@ try {
 - [ ] Verify no ESLint errors remain
 - [ ] Test the route functionality
 
-### Key Takeaways
-1. **Namespace conflicts are easy to avoid** - use specific domain names
+### Key Success Factors
+1. **Namespace conflicts are easy to avoid** - use second-level domain names
 2. **ESLint compliance is non-negotiable** - remove unused code
 3. **Caching is mandatory** - respect target sites
 4. **Error handling is essential** - use try-catch and logger
 5. **Pre-commit hooks are helpful** - trust them to handle formatting
 6. **Follow established patterns** - don't reinvent the wheel
 
-This experience demonstrates the importance of following RSSHub conventions and the effectiveness of the project's quality control systems.
+### Common Pitfalls to Avoid
+- **Folder naming conflicts**: Always use second-level domain names
+- **Missing error handling**: Wrap all network requests in try-catch
+- **Inconsistent caching**: Implement at both feed and item levels
+- **ESLint violations**: Remove unused variables and parameters
+- **Hardcoded values**: Use centralized utilities and configurations
+
+The project's quality control systems (ESLint, pre-commit hooks, automated testing) ensure consistency and reliability across all routes.
