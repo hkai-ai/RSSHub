@@ -15,7 +15,7 @@ export const route: Route = {
     handler: async (ctx) => {
         const { date } = ctx.req.param();
         const baseUrl = date
-            ? `https://www.troweprice.com/personal-investing/resources/insights/global-markets-weekly-update?date=${date}`
+            ? `https://www.troweprice.com/personal-investing/resources/insights/global-markets-weekly-update.html?date=${date}`
             : 'https://www.troweprice.com/personal-investing/resources/insights/global-markets-weekly-update.html';
 
         const feed = await cache.tryGet(baseUrl, async () => {
