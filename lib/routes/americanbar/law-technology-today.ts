@@ -75,7 +75,6 @@ export const route: Route = {
                     title: 'Law Technology Today',
                     link: baseUrl,
                     description: 'Technology strategies from practicing lawyers, technology professionals, and practice management experts.',
-
                     item: items,
                 };
             },
