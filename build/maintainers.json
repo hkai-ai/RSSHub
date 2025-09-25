@@ -8172,7 +8172,7 @@
   "/trow/portal": [
     "shiningdracon"
   ],
-  "/troweprice/global-markets-weekly-update/:date?": [
+  "/troweprice/global-markets-weekly-update": [
     "DIYgod"
   ],
   "/tsdm39/bd/:type?": [
