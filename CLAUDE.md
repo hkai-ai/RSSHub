@@ -57,7 +57,7 @@ pnpm build:docs          # Build documentation
 export const route: Route = {
     path: '/path/:param/:optional?',        // Hono routing syntax
     name: 'Human Readable Name',            // Different from namespace name
-    categories: ['programming'],            // For documentation
+    categories: ['programming'],            // **Must use standard RSSHub categories only**
     example: '/github/issues/DIYgod/RSSHub', // Working example URL
     parameters: { /* param descriptions */ },
     features: { /* capabilities flags */ },
@@ -66,6 +66,44 @@ export const route: Route = {
     handler: async (ctx) => { /* implementation */ }
 };
 ```
+
+### Standard RSSHub Categories
+**IMPORTANT**: The `categories` field MUST only use values from the official Category type:
+```typescript
+export type Category =
+    | 'popular'
+    | 'social-media'
+    | 'new-media'
+    | 'traditional-media'
+    | 'bbs'
+    | 'blog'
+    | 'programming'
+    | 'design'
+    | 'live'
+    | 'multimedia'
+    | 'picture'
+    | 'anime'
+    | 'program-update'
+    | 'university'
+    | 'forecast'
+    | 'travel'
+    | 'shopping'
+    | 'game'
+    | 'reading'
+    | 'government'
+    | 'study'
+    | 'journal'
+    | 'finance'
+    | 'other';
+```
+
+**Common category mappings**:
+- AI/Technology blogs: `['programming', 'new-media']`
+- News sites: `['traditional-media', 'new-media']`
+- Social media: `['social-media']`
+- Developer content: `['programming']`
+- Design content: `['design']`
+- Academic content: `['university', 'study']`
 
 ### Data Fetching Methods (Priority Order)
 1. **API** (preferred) - Use `ofetch` from `@/utils/ofetch` or `@/utils/got`
@@ -95,6 +133,8 @@ import { art } from '@/utils/render';          // Template rendering
 - No `console.log` (use logger from `@/utils/logger`)
 - Use `?.` optional chaining where appropriate
 - Cheerio: Use `.toArray()` instead of `.get()`
+- **No unused variables**: Remove or use all declared variables
+- **Import logger**: Always import `logger` from `@/utils/logger` for error logging
 
 ### Caching Best Practices
 ```typescript
@@ -313,3 +353,36 @@ browser.close(); // At the end of handler
 - Convert intended linebreaks to `<br>` tags in `description` field
 - Trim whitespace from title/subtitle/author fields for RSS reader compatibility
 - Set reasonable caching for each RSS route whenever possible.
+
+## Common Development Pitfalls
+
+### 1. Category Validation
+**Problem**: Using non-standard categories that cause TypeScript errors
+**Solution**: Always use the official Category type values listed above
+**Example**: Don't use `['ai', 'technology']` → Use `['programming', 'new-media']`
+
+### 2. ESLint Compliance
+**Problem**: Pre-commit hooks failing due to ESLint errors
+**Common issues**:
+- Unused variables (remove or use all declared variables)
+- Using `console.error` instead of `logger.error`
+- Missing logger import
+
+**Solutions**:
+```typescript
+// ✅ Correct: Import and use logger
+import { logger } from '@/utils/logger';
+
+// ❌ Wrong: Unused variables
+const title = 'test'; // Never used
+const description = 'desc'; // Never used
+
+// ✅ Correct: Remove unused variables or use them
+```
+
+### 3. Git Commit Process
+**Problem**: Pre-commit hooks automatically format code but may fail on ESLint errors
+**Solution**: Fix all ESLint errors before committing. The hooks will:
+1. Run Prettier for formatting
+2. Run ESLint for code quality
+3. Fail if any ESLint errors remain
