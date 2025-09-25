@@ -433,6 +433,10 @@ export type Config = {
     smzdm: {
         cookie?: string;
     };
+    brightdata: {
+        apiKey?: string;
+        zone?: string;
+    };
 };
 
 const value: Config | Record<string, any> = {};
@@ -909,6 +913,10 @@ const calculateValue = () => {
         },
         smzdm: {
             cookie: envs.SMZDM_COOKIE,
+        },
+        brightdata: {
+            apiKey: envs.BRIGHTDATA_API_KEY,
+            zone: envs.BRIGHTDATA_UNLOCKER_ZONE,
         },
     };
 

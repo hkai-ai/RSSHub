@@ -204,6 +204,44 @@ await new Promise(resolve => setTimeout(resolve, 1000));
 // Random user agents
 import randUserAgent from '@/utils/rand-user-agent';
 const headers = { 'User-Agent': randUserAgent({ browser: 'chrome' }) };
+
+// Bright Data Unlocker for bypassing anti-bot measures
+import { unlockWebsite, unlockWebsiteAsJSON } from '@/utils/bright-data-unlocker';
+
+// Get HTML content bypassing anti-bot measures
+const html = await unlockWebsite('https://example.com');
+
+// Get JSON response with full headers and status info
+const response = await unlockWebsiteAsJSON('https://example.com', { country: 'us' });
+// response: { status_code: 200, headers: {...}, body: "HTML content" }
+```
+
+### Route Configuration for Bright Data Unlocker
+When using Bright Data Unlocker in routes, configure required environment variables:
+```typescript
+export const route: Route = {
+    path: '/example/:param',
+    name: 'Example Route',
+    categories: ['programming'],
+    maintainers: ['username'],
+    features: {
+        requireConfig: [
+            {
+                name: 'BRIGHTDATA_API_KEY',
+                description: 'Bright Data API key for bypassing anti-bot measures'
+            },
+            {
+                name: 'BRIGHTDATA_UNLOCKER_ZONE',
+                description: 'Bright Data zone identifier for web unlocker'
+            }
+        ]
+    },
+    handler: async (ctx) => {
+        // Use Bright Data Unlocker in handler
+        const html = await unlockWebsite(targetUrl);
+        // Process HTML content...
+    }
+};
 ```
 
 ### Puppeteer Best Practices
