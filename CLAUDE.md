@@ -460,7 +460,60 @@ $('.flex-1.min-w-0.max-w-\\[1120px\\]').children().each((_, element) => {
 });
 ```
 
-### 6. Date Parsing for Chinese Content
+### 6. CSS Selector Stability Best Practices
+**Problem**: Using unstable, auto-generated CSS class names that break when website updates
+**Solution**: Prioritize stable selectors and text-based matching over auto-generated classes
+
+**Critical lessons**:
+- **NEVER use auto-generated class names** like `UserBaseInfo_textInfoContainer__JNjgO`, `css-1krxe8n`, `css-1rwhchs`
+- **PREFER stable data attributes** like `[data-framer-name="Featured Card"]`, `[data-testid="article"]`
+- **USE text-based selectors** like `:contains('Published on')`, `:contains('Read more')`
+- **LEVERAGE semantic HTML** like `article`, `nav`, `main`, `section` tags
+- **COMBINE selectors** for precision: `$('article h2:contains("Breaking")')`
+
+**Best practice examples**:
+```typescript
+// ✅ Correct: Stable data attributes
+const featuredCard = $('[data-framer-name="Featured Card"]').first();
+const articleLink = $('[data-testid="article-link"]').first();
+
+// ✅ Correct: Component type attributes with index selection
+const description = featuredCard.find('[data-framer-component-type="RichTextContainer"]').eq(1);
+const titleContainer = $('[data-framer-component-type="TextContainer"]').eq(0);
+
+// ✅ Correct: Text-based selectors with parent relationships
+const dateContainer = $article("p:contains('Published on')").parent().next();
+const readMoreLink = $("a:contains('Read more')").first();
+
+// ✅ Correct: Semantic HTML + text matching
+const articleTitle = $('article h2:contains("Breaking News")').first();
+const navigation = $('nav a:contains("Home")').first();
+
+// ✅ Correct: Attribute selectors for stable properties
+const externalLinks = $('a[href^="http"][target="_blank"]');
+
+// ❌ Wrong: Auto-generated class names (will break on website updates)
+const userInfo = $('.UserBaseInfo_textInfoContainer__JNjgO'); // Breaks on every build
+const articleCard = $('.css-1krxe8n'); // Unstable hash
+const button = $('.css-1rwhchs'); // Changes with every deployment
+
+// ⚠️ Last resort: Partial matching for auto-generated classes
+const userInfo = $('[class*="UserBaseInfo_textInfoContainer_"]'); // Partial match
+const articleCard = $('[class*="css-"][class*="krxe8n"]'); // Pattern matching
+```
+
+**Selector priority order**:
+1. **Data attributes** (`[data-*]`) - Most stable
+2. **Text-based selectors** (`:contains()`) - Content-dependent but reliable
+3. **Semantic HTML** (`article`, `nav`, `section`) - Stable structure
+4. **ID selectors** (`#id`) - Stable if properly used
+5. **Stable class names** (`.btn-primary`, `.article-content`) - Business logic classes
+6. **Partial class matching** (`[class*="pattern_"]`) - Last resort for auto-generated classes
+7. **Auto-generated classes** (`__hash`, `css-`) - AVOID COMPLETELY
+
+**Debugging tip**: When selectors fail, check the website's HTML for `data-` attributes, semantic tags, or unique text content before relying on CSS classes.
+
+### 7. Date Parsing for Chinese Content
 **Problem**: Chinese date formats failing to parse correctly
 **Solution**: Use correct format strings and timezone handling
 
