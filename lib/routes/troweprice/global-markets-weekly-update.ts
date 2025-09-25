@@ -24,7 +24,15 @@ export const route: Route = {
 
             // Extract publication date from the page
             const dateElement = $('#main-content_body-band-1105586714_personal-investor-body_paragraph-copy-copy .paragraph-contents p').first();
+            if (!dateElement.length) {
+                logger.error('Date element not found on page');
+                throw new Error('Date element not found on page');
+            }
             const dateText = dateElement.text();
+            if (!dateText.trim()) {
+                logger.error('Date element is empty');
+                throw new Error('Date element is empty');
+            }
 
             // Extract date from format like "markets & economy | september 19, 2025"
             const dateMatch = dateText.match(/\|\s*([a-zA-Z]+)\s+(\d{1,2}),\s*(\d{4})/);
