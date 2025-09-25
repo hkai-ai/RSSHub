@@ -10,7 +10,7 @@ export const route: Route = {
     name: 'ElevenLabs Blog',
     url: 'elevenlabs.io/blog',
     description: 'ElevenLabs Blog - Voice AI research and deployment updates',
-    categories: ['ai', 'technology'],
+    categories: ['programming', 'new-media'],
     example: '/elevenlabs/blog',
     maintainers: ['your-github-username'],
     handler: async () => {
@@ -37,7 +37,9 @@ export const route: Route = {
                         // Try to find link in h2 parent
                         link = $article.find('h2').parent('a').attr('href');
                     }
-                    if (!link) {return;}
+                    if (!link) {
+                        return;
+                    }
 
                     const fullLink = link.startsWith('http') ? link : `${baseUrl}${link}`;
 
@@ -46,7 +48,9 @@ export const route: Route = {
                     if (!title) {
                         title = $article.find('h2').first().text().trim();
                     }
-                    if (!title) {return;}
+                    if (!title) {
+                        return;
+                    }
 
                     // Get description
                     const description = $article.find('p.f-description-03').text().trim();
