@@ -222,7 +222,7 @@ pnpm vitest:watch                  # Watch mode for development
 ### Date Handling Standards
 - Use `parseDate()` from `@/utils/parse-date` for date parsing
 - Use `parseRelativeDate()` for relative dates ("2 days ago")
-- Use `timezone()` for timezone adjustments
+- Use `timezone()` from `@/utils/timezone` for timezone adjustments
 - **Never** add timestamps when websites don't provide them
 - Return `Date` objects, not strings
 
@@ -287,16 +287,36 @@ export const route: Route = {
 
 ### Puppeteer Best Practices
 ```typescript
-// Request interception for performance
-await page.setRequestInterception(true);
-page.on('request', (request) => {
-    request.resourceType() === 'document' ? request.continue() : request.abort();
+// Use getPuppeteerPage helper for simplified puppeteer usage
+const { page, destory } = await getPuppeteerPage(url, {
+    gotoConfig: {
+        waitUntil: 'networkidle2',
+        timeout: 30000,
+    }
 });
 
-// Always close resources
-const items = await Promise.all(/* processing */);
-browser.close(); // At the end of handler
+try {
+    // Wait for specific content to load
+    await page.waitForSelector('main.ant-layout-content', { timeout: 30000 });
+
+    // Get page content
+    const html = await page.content();
+    const $ = load(html);
+
+    // Process content...
+
+} finally {
+    // Always clean up resources
+    await destory();
+}
 ```
+
+**Important Notes:**
+- Always use `getPuppeteerPage()` instead of manual puppeteer setup
+- The helper automatically handles browser creation, page setup, and cleanup
+- Use `destory()` in the finally block to clean up resources
+- Always wrap in try-finally to ensure proper cleanup
+- Use `page.content()` instead of `page.evaluate(() => document.documentElement.outerHTML)`
 
 ## RSS Feed Format Support
 
@@ -404,6 +424,53 @@ const articles: Array<{
 
 const items: Array<{ link: string; title: string }> = [];
 ```
+
+### 5. HTML Parsing Best Practices
+**Problem**: Incorrect CSS selectors based on assumed HTML structure
+**Solution**: Always analyze real HTML structure before writing selectors
+
+**Key lessons**:
+- Use `children()` instead of `find()` for direct child elements
+- Match specific CSS classes for accurate element identification
+- Add debug logging to verify selector logic
+- Never guess HTML structure - always get actual DOM
+
+**Example pattern**:
+```typescript
+// ✅ Correct: Specific class matching
+$('.flex-1.min-w-0.max-w-\\[1120px\\]').children().each((_, element) => {
+    const $element = $(element);
+    if (dateText.match(/\d{4}年\d{1,2}月\d{1,2}日/) &&
+        $element.hasClass('text-[#181E25]') &&
+        $element.hasClass('text-[16px]') &&
+        $element.hasClass('leading-[20px]') &&
+        $element.hasClass('font-[600]')) {
+        // Process date element
+    }
+});
+```
+
+### 6. Date Parsing for Chinese Content
+**Problem**: Chinese date formats failing to parse correctly
+**Solution**: Use correct format strings and timezone handling
+
+**Key patterns**:
+- Chinese months and days can be single digits (e.g., "8月6日")
+- Use `M` and `D` format tokens instead of `MM` and `DD`
+- Always apply timezone for Chinese content (+8)
+
+**Examples**:
+```typescript
+// ✅ Correct: Chinese date with timezone
+const date = timezone(parseDate(dateText, 'YYYY年M月D日'), 8);
+
+// ❌ Wrong: Incorrect format or missing timezone
+const date = parseDate(dateText, 'YYYY年MM月DD日');
+```
+
+**Common Chinese date formats**:
+- "2025年8月6日" → `YYYY年M月D日`
+- "2025年12月25日" → `YYYY年M月D日` (works for both single and double digits)
 
 ### 3. Git Commit Process
 **Problem**: Pre-commit hooks automatically format code but may fail on ESLint errors
