@@ -137,6 +137,57 @@ import { art } from '@/utils/render';          // Template rendering
 - **Import logger**: Always import `logger` from `@/utils/logger` for error logging
 - **Type annotations**: Always provide explicit types for arrays and objects
 - **CSS selector escaping**: Use `String.raw` template literals for complex CSS selectors
+- **Regular expressions**: Use `.test()` instead of `.match()` for boolean checks
+- **Date validation**: Use `Number.isNaN()` instead of global `isNaN()`
+- **String conversion**: Use explicit `String()` instead of template literal coercion
+- **Conditional formatting**: Use consistent formatting for multi-line conditionals
+
+#### ESLint Debugging and Auto-Fix Process
+**Common ESLint Issues and Solutions**:
+
+1. **Unused imports/variables**: ESLint will fail commit hooks
+   ```typescript
+   // ❌ Wrong: Imported but never used
+   import { parseDate } from '@/utils/parse-date';
+
+   // ✅ Correct: Remove unused imports
+   // Only import what you actually use
+   ```
+
+2. **Regular expression patterns**: Prefer `.test()` for boolean operations
+   ```typescript
+   // ❌ Wrong: Using match() for boolean check
+   if (dateText.match(/^\d{2}\.\d{2}\.\d{2}$/)) {
+
+   // ✅ Correct: Use test() for boolean check
+   if (/^\d{2}\.\d{2}\.\d{2}$/.test(dateText)) {
+   ```
+
+3. **Array sorting**: Pre-commit hooks may reformat complex conditions
+   ```typescript
+   // ✅ Correct: Clear conditional formatting after auto-fix
+   items.sort((a, b) => {
+       if (!a.pubDate && !b.pubDate) {
+           return 0;
+       }
+       if (!a.pubDate) {
+           return 1;
+       }
+       if (!b.pubDate) {
+           return -1;
+       }
+       return b.pubDate.getTime() - a.pubDate.getTime();
+   });
+   ```
+
+**Development workflow**:
+1. Write code following RSSHub patterns
+2. Run `pnpm lint --fix` for auto-fixes
+3. Check remaining ESLint warnings/errors
+4. Remove unused imports/variables manually
+5. Commit - pre-commit hooks run final ESLint check
+6. If hooks fail, fix reported issues and retry commit
+7. **Trust the auto-formatter**: Pre-commit hooks automatically format code correctly
 
 ### Caching Best Practices
 ```typescript
