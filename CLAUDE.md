@@ -504,3 +504,113 @@ $(String.raw`.flex-1.min-w-0.max-w-[1120px]`).find(String.raw`.rounded-[16px]`)
 3. Check remaining warnings/errors
 4. Commit - hooks will run final checks
 5. If hooks fail, fix issues and retry
+
+## Development Experience and Lessons Learned
+
+### Recent Project Experience: Notion Blog RSS Route
+
+#### Critical Lessons Learned
+
+### 1. Avoid Namespace Conflicts ⭐
+**Problem**: Initially used `notion` folder which conflicted with existing routes
+**Solution**: Used `nation.com` folder instead to avoid conflicts
+**Lesson**: Always check for existing folders before creating new routes. Use the full domain name as the folder name to prevent conflicts.
+
+### 2. Code Quality and ESLint Compliance ⭐
+**Problem**: Unused `ctx` parameter caused ESLint errors
+**Solution**: Removed unused parameters: `handler(ctx)` → `handler()`
+**Lesson**:
+- Remove all unused variables and parameters
+- Pre-commit hooks automatically catch and fix these issues
+- Run `pnpm lint --fix` before committing to auto-fix issues
+
+### 3. Caching Strategy Implementation ⭐
+**Success Pattern**: Implemented comprehensive caching
+```typescript
+// Cache the entire feed
+return await cache.tryGet(`${rootUrl}/blog`, async () => {
+    // Main data fetching logic
+}, 3600); // 1-hour cache
+
+// Cache individual article details
+const detailedItems = await Promise.all(
+    items.map((item) =>
+        cache.tryGet(item.link, async () => {
+            // Article detail fetching
+        })
+    )
+);
+```
+
+**Critical Requirements**:
+- **MANDATORY for all RSS routes** - Every route MUST implement caching
+- **Recommended duration**: 300-3600 seconds (5 minutes to 1 hour)
+- **Always wrap main data fetching logic** in `cache.tryGet()`
+- **Benefits**: Reduces server load, prevents rate limiting, improves response times
+
+### 4. Error Handling Best Practices
+**Implementation**: Added comprehensive try-catch blocks
+```typescript
+try {
+    const articleResponse = await ofetch(item.link, {
+        headers: { 'User-Agent': config.ua },
+    });
+    // Process response
+} catch (error) {
+    logger.error(`Failed to fetch article details for ${item.link}:`, error);
+    return item; // Graceful degradation
+}
+```
+
+**Lesson**: Always wrap network requests in try-catch blocks and use logger for error reporting.
+
+### 5. Technical Implementation Success
+**Correct Patterns Used**:
+- ✅ Used `ofetch` for HTTP requests
+- ✅ Used `cheerio` for HTML parsing
+- ✅ Used `parseDate()` for date parsing
+- ✅ Added proper TypeScript type annotations
+- ✅ Used `config.ua` for User-Agent
+- ✅ Imported logger for error handling
+
+### 6. Folder Structure and Naming
+**Lesson Learned**: Use specific domain names for folders to avoid conflicts
+- **Wrong**: `/lib/routes/notion/` (conflicts with existing)
+- **Correct**: `/lib/routes/nation.com/` (specific and unique)
+
+### 7. Pre-commit Hook Experience
+**Observation**: Pre-commit hooks automatically:
+- Fix formatting (Prettier)
+- Fix ESLint issues
+- Convert line endings (CRLF → LF)
+- Ensure code quality standards
+
+**Workflow**: Trust the pre-commit hooks to handle formatting and basic fixes.
+
+### 8. Development Checklist Update
+#### Before Starting New Route
+- [ ] Check for existing folder names to avoid conflicts
+- [ ] Use full domain name as folder name
+- [ ] Plan caching strategy
+
+#### During Implementation
+- [ ] Remove unused variables/parameters
+- [ ] Implement comprehensive caching
+- [ ] Add error handling with logger
+- [ ] Use proper type annotations
+- [ ] Follow RSSHub patterns
+
+#### Before Commit
+- [ ] Run `pnpm lint --fix` for auto-fixes
+- [ ] Verify no ESLint errors remain
+- [ ] Test the route functionality
+
+### Key Takeaways
+1. **Namespace conflicts are easy to avoid** - use specific domain names
+2. **ESLint compliance is non-negotiable** - remove unused code
+3. **Caching is mandatory** - respect target sites
+4. **Error handling is essential** - use try-catch and logger
+5. **Pre-commit hooks are helpful** - trust them to handle formatting
+6. **Follow established patterns** - don't reinvent the wheel
+
+This experience demonstrates the importance of following RSSHub conventions and the effectiveness of the project's quality control systems.
