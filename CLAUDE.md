@@ -371,7 +371,7 @@ browser.close(); // At the end of handler
 **Solutions**:
 ```typescript
 // ✅ Correct: Import and use logger
-import { logger } from '@/utils/logger';
+import logger from '@/utils/logger';
 
 // ❌ Wrong: Unused variables
 const title = 'test'; // Never used

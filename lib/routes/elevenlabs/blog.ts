@@ -3,7 +3,7 @@ import ofetch from '@/utils/ofetch';
 import { load } from 'cheerio';
 import { parseDate } from '@/utils/parse-date';
 import cache from '@/utils/cache';
-import { logger } from '@/utils/logger';
+import logger from '@/utils/logger';
 
 export const route: Route = {
     path: '/blog',
