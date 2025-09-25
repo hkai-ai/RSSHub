@@ -478,3 +478,29 @@ const date = parseDate(dateText, 'YYYY年MM月DD日');
 1. Run Prettier for formatting
 2. Run ESLint for code quality
 3. Fail if any ESLint errors remain
+
+### 7. ESLint Auto-Fix Experience
+**Problem**: CSS selector escaping causing ESLint warnings
+**Solution**: Use `String.raw` template literals for complex CSS selectors
+
+**Common ESLint issues and fixes**:
+- **CSS selector escaping**: Use `String.raw`.flex-1.min-w-0.max-w-\[1120px\]`` instead of manual escaping
+- **Automatic fixes available**: Run `pnpm lint --fix` to auto-fix most issues
+- **Warnings vs Errors**: Warnings won't block commit, but errors will
+- **Pre-commit hooks**: Automatically run Prettier and ESLint, may modify code
+
+**Example fixes**:
+```typescript
+// ❌ Manual escaping (causes warnings)
+$('.flex-1.min-w-0.max-w-\\[1120px\\]').find('.rounded-\\[16px\\]')
+
+// ✅ String.raw template (clean)
+$(String.raw`.flex-1.min-w-0.max-w-[1120px]`).find(String.raw`.rounded-[16px]`)
+```
+
+**Development workflow**:
+1. Write code
+2. Run `pnpm lint --fix` for auto-fixes
+3. Check remaining warnings/errors
+4. Commit - hooks will run final checks
+5. If hooks fail, fix issues and retry
