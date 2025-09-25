@@ -7,23 +7,20 @@ import cache from '@/utils/cache';
 import logger from '@/utils/logger';
 
 export const route: Route = {
-    path: '/global-markets-weekly-update/:date?',
+    path: '/global-markets-weekly-update',
     name: 'Global Markets Weekly Update',
     categories: ['finance', 'new-media'],
-    example: '/troweprice/global-markets-weekly-update/2025-09-19',
+    example: '/troweprice/global-markets-weekly-update',
     maintainers: ['DIYgod'],
-    handler: async (ctx) => {
-        const { date } = ctx.req.param();
-        const baseUrl = date
-            ? `https://www.troweprice.com/personal-investing/resources/insights/global-markets-weekly-update.html?date=${date}`
-            : 'https://www.troweprice.com/personal-investing/resources/insights/global-markets-weekly-update.html';
+    handler: async () => {
+        const baseUrl = 'https://www.troweprice.com/personal-investing/resources/insights/global-markets-weekly-update.html';
 
         const feed = await cache.tryGet(baseUrl, async () => {
             const response = await ofetch(baseUrl);
             const $ = load(response);
 
             // Extract publication date from the page
-            const dateElement = $('#main-content_body-band-1105586714_personal-investor-body_paragraph-copy-copy .paragraph-contents p').first();
+            const dateElement = $('.paragraph-contents p:contains("markets & economy")').first();
             if (!dateElement.length) {
                 logger.error('Date element not found on page');
                 throw new Error('Date element not found on page');
@@ -53,6 +50,13 @@ export const route: Route = {
 
             const pubDate = timezone(parsedDate, -5); // EST timezone (UTC-5)
 
+            // Format date for URL parameter (YYYY-MM-DD)
+            const monthNum = String(parsedDate.getMonth() + 1).padStart(2, '0');
+            const dayNum = String(parsedDate.getDate()).padStart(2, '0');
+            const yearNum = parsedDate.getFullYear();
+            const dateParam = `${yearNum}-${monthNum}-${dayNum}`;
+            const articleUrl = `${baseUrl}?date=${dateParam}`;
+
             // Extract title
             const title = $('h1.trp-darkest-gray.text-light').text().trim();
 
@@ -67,7 +71,7 @@ export const route: Route = {
             }> = [
                 {
                     title: `${title}: ${subtitle}`,
-                    link: baseUrl,
+                    link: articleUrl,
                     pubDate,
                 },
             ];
