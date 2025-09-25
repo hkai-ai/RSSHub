@@ -57,8 +57,17 @@ export const route: Route = {
                             const fullYear = Number.parseInt(year) <= 30 ? `20${year}` : `19${year}`;
                             // Set to 8:00 AM in New York timezone (UTC-5 EST or UTC-4 EDT)
                             const baseDate = parseDate(`${month}/${day}/${fullYear} 08:00`, 'MM/DD/YYYY HH:mm');
+
+                            if (!baseDate || Number.isNaN(baseDate.getTime())) {
+                                logger.error(`Failed to parse date: ${dateParam}`);
+                                throw new Error(`Invalid publication date format: ${dateParam}`);
+                            }
+
                             pubDate = timezone(baseDate, -5); // New York timezone
                         }
+                    } else {
+                        logger.error('Publication date not found in page content');
+                        throw new Error('Publication date not found - page format may have changed');
                     }
 
                     // Extract title
