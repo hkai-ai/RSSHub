@@ -71,6 +71,10 @@ export const route: Route = {
                         };
                     });
 
+                if (items.length === 0) {
+                    throw new Error('No articles found on Law Technology Today page');
+                }
+
                 return {
                     title: 'Law Technology Today',
                     link: baseUrl,
