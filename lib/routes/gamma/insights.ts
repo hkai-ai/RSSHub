@@ -1,7 +1,6 @@
 import { Route } from '@/types';
 import { unlockWebsite } from '@/utils/bright-data-unlocker';
 import { load } from 'cheerio';
-import { parseDate } from '@/utils/parse-date';
 import cache from '@/utils/cache';
 import logger from '@/utils/logger';
 
@@ -41,7 +40,7 @@ export const route: Route = {
 
 async function handler() {
     const baseUrl = 'https://gamma.app';
-    const insightsUrl = `${baseUrl}/insights/en`;
+    const insightsUrl = `${baseUrl}/en/insights`;
 
     return await cache.tryGet(
         insightsUrl,
@@ -50,6 +49,7 @@ async function handler() {
             const response = await unlockWebsite(insightsUrl, {
                 country: 'US',
             });
+
             const $ = load(response);
 
             const items: Array<{
@@ -62,131 +62,113 @@ async function handler() {
                 image: string | undefined;
             }> = [];
 
-            // Extract articles from the page
-            $('.chakra-linkbox.css-89dcg6').each((_, element) => {
-                const $article = $(element);
+            // Track processed articles to avoid duplicates
+            const processedLinks = new Set<string>();
 
-                // Get title
-                const title = $article.find('h2 a').first().text().trim();
+            // Use stable selectors based on Chakra UI semantic classes and role attributes
+            $('.chakra-linkbox[role="group"]').each((_, element) => {
+                try {
+                    const $item = $(element);
 
-                // Get link
-                const link = $article.find('h2 a').first().attr('href');
+                    // Extract title from chakra-heading containing chakra-link with chakra-linkbox__overlay
+                    const $titleLink = $item.find('.chakra-heading .chakra-link.chakra-linkbox__overlay').first();
+                    const title = $titleLink.text().trim();
+                    const link = $titleLink.attr('href');
 
-                // Get date
-                const dateText = $article.find('.css-6iyxuc').first().text().trim();
-                let pubDate;
+                    if (!title || !link) {return;}
 
-                // Handle different language date formats
-                if (dateText) {
-                    // Portuguese: "16 de setembro de 2025"
-                    // Spanish: "16 de septiembre de 2025"
-                    // French: "16 septembre 2025"
-                    // German: "16. September 2025"
-                    // Chinese: "2025年9月16日"
-                    if (dateText.includes('年') && dateText.includes('月') && dateText.includes('日')) {
-                        // Handle Chinese format: "2025年9月16日"
-                        const yearMatch = dateText.match(/(\d{4})年/);
-                        const monthMatch = dateText.match(/(\d{1,2})月/);
-                        const dayMatch = dateText.match(/(\d{1,2})日/);
-
-                        if (yearMatch && monthMatch && dayMatch) {
-                            const year = yearMatch[1];
-                            const month = monthMatch[1].padStart(2, '0');
-                            const day = dayMatch[1].padStart(2, '0');
-                            pubDate = parseDate(`${year}-${month}-${day}`);
-                        }
-                    } else if (dateText.includes('de ')) {
-                        // Handle Portuguese/Spanish format
-                        const monthMap = {
-                            janeiro: '01',
-                            fevereiro: '02',
-                            março: '03',
-                            abril: '04',
-                            maio: '05',
-                            junho: '06',
-                            julho: '07',
-                            agosto: '08',
-                            setembro: '09',
-                            outubro: '10',
-                            novembro: '11',
-                            dezembro: '12',
-                            enero: '01',
-                            febrero: '02',
-                            marzo: '03',
-                            abril: '04',
-                            mayo: '05',
-                            junio: '06',
-                            julio: '07',
-                            agosto: '08',
-                            septiembre: '09',
-                            octubre: '10',
-                            noviembre: '11',
-                            diciembre: '12',
-                        };
-
-                        const parts = dateText.replace('de ', '').replace(' de ', ' ').split(' ');
-                        if (parts.length === 3) {
-                            const day = parts[0].padStart(2, '0');
-                            const month = monthMap[parts[1].toLowerCase()] || parts[1];
-                            const year = parts[2];
-                            pubDate = parseDate(`${year}-${month}-${day}`);
-                        }
-                    } else {
-                        // Fallback to default parser
-                        pubDate = parseDate(dateText);
+                    // Skip if we've already processed this link
+                    const fullLink = link.startsWith('http') ? link : `${baseUrl}${link}`;
+                    if (processedLinks.has(fullLink)) {
+                        return;
                     }
-                }
+                    processedLinks.add(fullLink);
 
-                // Get category
-                const category = $article.find('.css-1rwhchs').first().text().trim();
+                    // Extract date from chakra-text (should be in format like "September 15th, 2025")
+                    let pubDate: Date | undefined;
+                    $item.find('.chakra-text').each((_, textEl) => {
+                        const dateText = $(textEl).text().trim();
+                        // Match date patterns like "September 15th, 2025" or "July 29th, 2025"
+                        if (/^[A-Z][a-z]+ \d{1,2}[a-z]{2}, \d{4}$/.test(dateText)) {
+                            try {
+                                // Parse date like "September 15th, 2025"
+                                const cleanDate = dateText.replace(/(\d+)(st|nd|rd|th)/, '$1');
+                                // Use JavaScript Date constructor which handles "February 4, 2025" format
+                                pubDate = new Date(cleanDate);
+                                if (Number.isNaN(pubDate.getTime())) {
+                                    throw new TypeError('Invalid date');
+                                }
+                            } catch (error) {
+                                logger.error(`Date parsing error for "${dateText}":`, error);
+                                pubDate = new Date();
+                            }
+                            return false; // Break the each loop
+                        }
+                    });
 
-                // Get author
-                const author = $article.find('.css-1krxe8n').first().text().trim();
+                    // Extract category from chakra-badge links
+                    const categories: string[] = [];
+                    $item.find('.chakra-badge').each((_, badgeEl) => {
+                        const categoryText = $(badgeEl).text().trim();
+                        if (categoryText) {
+                            categories.push(categoryText);
+                        }
+                    });
 
-                // Get image
-                const image = $article.find('img').first().attr('src');
+                    // Extract author from chakra-linkbox containing author link
+                    let author = 'Gamma Team';
+                    const $authorLink = $item.find('.chakra-linkbox .chakra-link[href*="/insights/author/"]').first();
+                    if ($authorLink.length > 0) {
+                        author = $authorLink.text().trim();
+                    } else {
+                        // Fallback: look for "Gamma Team" text in chakra-text
+                        $item.find('.chakra-text').each((_, textEl) => {
+                            const text = $(textEl).text().trim();
+                            if (text === 'Gamma Team') {
+                                author = text;
+                                return false;
+                            }
+                        });
+                    }
 
-                if (title && link) {
+                    // Extract image from chakra-image
+                    let image: string | undefined;
+                    const $img = $item.find('.chakra-image').first();
+                    if ($img.length > 0) {
+                        image = $img.attr('src');
+                    }
+
+                    // Build description from available info
+                    let description = String(title);
+                    if (categories.length > 0) {
+                        description += `<br><br>Category: ${categories.join(', ')}`;
+                    }
+                    if (author) {
+                        description += `<br>Author: ${author}`;
+                    }
+                    if (image) {
+                        description = `<img src="${image}" alt="${title}"><br><br>${description}`;
+                    }
+
                     items.push({
                         title,
-                        link: link.startsWith('http') ? link : `${baseUrl}${link}`,
-                        description: '', // Will be populated below
+                        link: fullLink,
+                        description,
                         author,
-                        pubDate,
-                        category,
-                        image: image ? (image.startsWith('http') ? image : `${baseUrl}${image}`) : undefined,
+                        pubDate: pubDate || new Date(),
+                        category: categories.length > 0 ? categories : ['Blog'],
+                        image,
                     });
+                } catch (error) {
+                    logger.error('Error parsing article item:', error);
                 }
             });
-
-            // Get full content for each article
-            const fullItems = await Promise.all(
-                items.map((item) =>
-                    cache.tryGet(item.link, async () => {
-                        try {
-                            const articleResponse = await unlockWebsite(item.link);
-                            const $article = load(articleResponse);
-
-                            // Extract article content
-                            const content = $article('.css-17xejub').first().html() || '';
-
-                            return {
-                                ...item,
-                                description: content,
-                            };
-                        } catch (error) {
-                            logger.error(`Failed to fetch article content for ${item.link}:`, error);
-                            return item;
-                        }
-                    })
-                )
-            );
 
             return {
                 title: 'Gamma Insights',
                 link: insightsUrl,
                 description: 'Latest insights, updates, and thought leadership from the Gamma team',
-                item: fullItems,
+                item: items,
             };
         },
         300

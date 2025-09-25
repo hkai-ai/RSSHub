@@ -227,6 +227,34 @@ pnpm vitest:watch                  # Watch mode for development
 - **Never** add timestamps when websites don't provide them
 - Return `Date` objects, not strings
 
+#### Common Date Parsing Issues and Solutions
+
+**Problem**: `parseDate()` returns `Invalid Date` for ordinal dates
+- **Symptom**: Dates like "September 15th, 2025" fail to parse with `parseDate(cleanDate, 'MMMM D, YYYY')`
+- **Root Cause**: RSSHub's `parseDate()` utility may not handle all format strings correctly
+- **Solution**: Use JavaScript's native `Date` constructor as fallback
+```typescript
+// ✅ Recommended pattern for ordinal dates
+const dateText = "September 15th, 2025";
+try {
+    const cleanDate = dateText.replace(/(\d+)(st|nd|rd|th)/, '$1'); // "September 15, 2025"
+    const pubDate = new Date(cleanDate); // Native JS Date handles this format well
+    if (isNaN(pubDate.getTime())) {
+        throw new Error('Invalid date');
+    }
+    return pubDate;
+} catch (error) {
+    logger.error(`Date parsing error for "${dateText}":`, error);
+    return new Date(); // Fallback to current date
+}
+```
+
+**Key Lessons**:
+- Always validate parsed dates with `isNaN(date.getTime())`
+- JavaScript's `Date` constructor is more flexible than custom format strings
+- Clean ordinal suffixes (st/nd/rd/th) before parsing
+- Test date parsing with debug logs to identify format mismatches
+
 ## Advanced Route Features
 
 ### Template Rendering
