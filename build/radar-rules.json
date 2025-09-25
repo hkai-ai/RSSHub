@@ -22264,6 +22264,29 @@
       }
     ]
   },
+  "imanage.com": {
+    "_name": "iManage",
+    ".": [
+      {
+        "title": "Blog",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/resources/resource-center/blog/",
+          "/"
+        ],
+        "target": "/imanage/blog"
+      },
+      {
+        "title": "News",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/resources/resource-center/news/",
+          "/"
+        ],
+        "target": "/imanage/news"
+      }
+    ]
+  },
   "imdb.com": {
     "_name": "IMDb",
     "www": [
@@ -29956,6 +29979,27 @@
           "/"
         ],
         "target": "/neea/local/ccpt"
+      }
+    ]
+  },
+  "neota.com": {
+    "_name": "Neota",
+    ".": [
+      {
+        "title": "Blog",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/blog/"
+        ],
+        "target": "/neota/blog"
+      },
+      {
+        "title": "News",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/news/"
+        ],
+        "target": "/neota/news"
       }
     ]
   },
@@ -42627,6 +42671,29 @@
           "/*"
         ],
         "target": "/wnacg(_,url)=>`/wnacg/tag/${new URL(url).pathname.match(/albums-index-tag-(.+?)\\.html$/)[1]}`"
+      }
+    ]
+  },
+  "wolterskluwer.com": {
+    "_name": "Wolters Kluwer",
+    ".": [
+      {
+        "title": "Expert Insights",
+        "docs": "https://docs.rsshub.app/routes/journal",
+        "source": [
+          "/en/expert-insights",
+          "/"
+        ],
+        "target": "/wolterskluwer/expert-insights"
+      },
+      {
+        "title": "News",
+        "docs": "https://docs.rsshub.app/routes/journal",
+        "source": [
+          "/en/news",
+          "/"
+        ],
+        "target": "/wolterskluwer/news"
       }
     ]
   },

@@ -4167,6 +4167,12 @@
   "/imagemagick/changelog": [
     "nczitzk"
   ],
+  "/imanage/blog": [
+    "claude-code"
+  ],
+  "/imanage/news": [
+    "claude-code"
+  ],
   "/imdb/chart/:chart?": [
     "TonyRL"
   ],
@@ -5553,6 +5559,8 @@
   ],
   "/nenu/sohac/*": [],
   "/nenu/yjsy/*": [],
+  "/neota/blog": [],
+  "/neota/news": [],
   "/netflav/": [
     "TonyRL"
   ],
@@ -7609,6 +7617,9 @@
   "/supchina/podcasts": [
     "nczitzk"
   ],
+  "/superlegal/blog": [
+    "RSSHub"
+  ],
   "/surfshark/blog/:category{.+}?": [
     "nczitzk"
   ],
@@ -8714,6 +8725,12 @@
   ],
   "/wohnnet/:category/:region/*": [
     "sk22"
+  ],
+  "/wolterskluwer/expert-insights/:types?": [
+    "claude-code"
+  ],
+  "/wolterskluwer/news/:types?": [
+    "claude-code"
   ],
   "/wordpress/:url?/:filter{.+}?": [
     "nczitzk"
