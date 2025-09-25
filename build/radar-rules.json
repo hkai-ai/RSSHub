@@ -31062,6 +31062,19 @@
       }
     ]
   },
+  "nyse.com": {
+    "_name": "NYSE",
+    "e": [
+      {
+        "title": "MAC Desk Weekly Recap",
+        "docs": "https://docs.rsshub.app/routes/finance",
+        "source": [
+          "/mac-desk-weekly-recap"
+        ],
+        "target": "/nyse/mac-desk-weekly-recap"
+      }
+    ]
+  },
   "nytimes.com": {
     "_name": "The New York Times",
     ".": [

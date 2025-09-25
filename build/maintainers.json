@@ -6003,6 +6003,9 @@
   "/nymity/censorbib": [
     "xtexChooser"
   ],
+  "/nyse/mac-desk-weekly-recap": [
+    "claude-code"
+  ],
   "/nytimes/book/:category?": [
     "melvinto",
     "pseudoyu"
@@ -8168,6 +8171,9 @@
   ],
   "/trow/portal": [
     "shiningdracon"
+  ],
+  "/troweprice/global-markets-weekly-update": [
+    "DIYgod"
   ],
   "/tsdm39/bd/:type?": [
     "equt"
