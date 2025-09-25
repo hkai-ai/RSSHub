@@ -1,7 +1,8 @@
 import { Route } from '@/types';
 import { load } from 'cheerio';
 import { parseDate } from '@/utils/parse-date';
-import { getPuppeteerPage } from '@/utils/puppeteer';
+import { unlockWebsite } from '@/utils/bright-data-unlocker';
+import cache from '@/utils/cache';
 
 export const route: Route = {
     path: '/news',
@@ -9,9 +10,18 @@ export const route: Route = {
     example: '/xai/news',
     parameters: {},
     features: {
-        requireConfig: false,
-        requirePuppeteer: true,
-        antiCrawler: false,
+        requireConfig: [
+            {
+                name: 'BRIGHTDATA_API_KEY',
+                description: 'Bright Data API key for bypassing anti-bot measures',
+            },
+            {
+                name: 'BRIGHTDATA_UNLOCKER_ZONE',
+                description: 'Bright Data zone identifier for web unlocker',
+            },
+        ],
+        requirePuppeteer: false,
+        antiCrawler: true,
         supportBT: false,
         supportPodcast: false,
         supportScihub: false,
@@ -25,58 +35,60 @@ async function handler() {
     const rootUrl = 'https://x.ai';
     const currentUrl = `${rootUrl}/news`;
 
-    const { page, destory } = await getPuppeteerPage(currentUrl, { gotoConfig: { waitUntil: 'networkidle0' } });
+    return await cache.tryGet(
+        currentUrl,
+        async () => {
+            const html = await unlockWebsite(currentUrl);
+            const $ = load(html);
 
-    const html = await page.content();
-    await destory();
+            // Extract featured article
+            const featuredArticle = $('.border-border .group.relative').first();
+            const featuredItems = [];
 
-    const $ = load(html);
+            if (featuredArticle.length) {
+                const title = featuredArticle.find('h3').text().trim();
+                const link = featuredArticle.find('a').attr('href');
+                const description = featuredArticle.find('p.text-secondary').text().trim();
+                const dateText = featuredArticle.find('p.mono-tag').text().trim();
 
-    // Extract featured article
-    const featuredArticle = $('.border-border .group.relative').first();
-    const featuredItems = [];
+                if (title && link) {
+                    featuredItems.push({
+                        title,
+                        link: link.startsWith('/') ? `${rootUrl}${link}` : link,
+                        description,
+                        pubDate: parseDate(dateText),
+                    });
+                }
+            }
 
-    if (featuredArticle.length) {
-        const title = featuredArticle.find('h3').text().trim();
-        const link = featuredArticle.find('a').attr('href');
-        const description = featuredArticle.find('p.text-secondary').text().trim();
-        const dateText = featuredArticle.find('p.mono-tag').text().trim();
+            // Extract grid articles
+            const gridItems = [];
+            $('.grid .group.relative.flex.flex-col').each((_, element) => {
+                const $element = $(element);
+                const title = $element.find('h4').text().trim();
+                const link = $element.find('a').attr('href');
+                const description = $element.find('p.text-secondary').text().trim();
+                const dateText = $element.find('span.mono-tag').text().trim();
 
-        if (title && link) {
-            featuredItems.push({
-                title,
-                link: link.startsWith('/') ? `${rootUrl}${link}` : link,
-                description,
-                pubDate: parseDate(dateText),
+                if (title && link) {
+                    gridItems.push({
+                        title,
+                        link: link.startsWith('/') ? `${rootUrl}${link}` : link,
+                        description,
+                        pubDate: parseDate(dateText),
+                    });
+                }
             });
-        }
-    }
 
-    // Extract grid articles
-    const gridItems = [];
-    $('.grid .group.relative.flex.flex-col').each((_, element) => {
-        const $element = $(element);
-        const title = $element.find('h4').text().trim();
-        const link = $element.find('a').attr('href');
-        const description = $element.find('p.text-secondary').text().trim();
-        const dateText = $element.find('span.mono-tag').text().trim();
+            const items = [...featuredItems, ...gridItems];
 
-        if (title && link) {
-            gridItems.push({
-                title,
-                link: link.startsWith('/') ? `${rootUrl}${link}` : link,
-                description,
-                pubDate: parseDate(dateText),
-            });
-        }
-    });
-
-    const items = [...featuredItems, ...gridItems];
-
-    return {
-        title: 'xAI News',
-        link: currentUrl,
-        description: 'Latest news and updates from xAI',
-        item: items,
-    };
+            return {
+                title: 'xAI News',
+                link: currentUrl,
+                description: 'Latest news and updates from xAI',
+                item: items,
+            };
+        },
+        3600
+    );
 }
