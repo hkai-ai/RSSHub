@@ -45,7 +45,7 @@ export const route: Route = {
 
 // Language mappings
 const languageMap: Record<string, string> = {
-    en: '',
+    en: '/en',
     de: '/de',
     es: '/es',
     fr: '/fr',
@@ -79,6 +79,7 @@ async function handler(ctx) {
     return await cache.tryGet(
         insightsUrl,
         async () => {
+            // Use the language-specific URL directly, no need for country control
             const response = await unlockWebsite(insightsUrl);
             const $ = load(response);
 

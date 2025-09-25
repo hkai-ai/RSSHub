@@ -11,6 +11,7 @@ export const route: Route = {
     categories: ['programming', 'new-media'],
     example: '/gamma/insights',
     parameters: {},
+    description: 'Gamma Insights blog',
     features: {
         requireConfig: [
             {
@@ -40,12 +41,15 @@ export const route: Route = {
 
 async function handler() {
     const baseUrl = 'https://gamma.app';
-    const insightsUrl = `${baseUrl}/insights`;
+    const insightsUrl = `${baseUrl}/insights/en`;
 
     return await cache.tryGet(
         insightsUrl,
         async () => {
-            const response = await unlockWebsite(insightsUrl);
+            // Force English version by using US IP
+            const response = await unlockWebsite(insightsUrl, {
+                country: 'US',
+            });
             const $ = load(response);
 
             const items: Array<{
