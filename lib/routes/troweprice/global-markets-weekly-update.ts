@@ -62,13 +62,11 @@ export const route: Route = {
             // Only add the current week's article
             const items: Array<{
                 title: string;
-                description: string;
                 link: string;
                 pubDate: Date;
             }> = [
                 {
                     title: `${title}: ${subtitle}`,
-                    description: generateDescription($),
                     link: baseUrl,
                     pubDate,
                 },
@@ -85,40 +83,3 @@ export const route: Route = {
         return feed;
     },
 };
-
-function generateDescription($: any): string {
-    let description = '';
-
-    // Add the main title and subtitle
-    const title = $('h1.trp-darkest-gray.text-light').text().trim();
-    const subtitle = $('h2.trp-darkest-gray.text-light').first().text().trim();
-
-    description += `<h2>${title}</h2>`;
-    description += `<h3>${subtitle}</h3>`;
-
-    // Extract content from each section
-    const sections = [
-        { name: 'U.S.', selector: 'us' },
-        { name: 'Europe', selector: 'europe' },
-        { name: 'Japan', selector: 'japan' },
-        { name: 'China', selector: 'china' },
-    ];
-
-    for (const section of sections) {
-        const sectionElement = $(`h2#${section.selector}, h3#${section.selector}`).first();
-        if (sectionElement.length) {
-            description += `<h4>${section.name}</h4>`;
-
-            // Get all paragraphs in this section
-            let currentElement = sectionElement.next();
-            while (currentElement.length && !currentElement.is('h2, h3')) {
-                if (currentElement.is('.paragraph-lg p, .paragraph-md p')) {
-                    description += `<p>${currentElement.text().trim()}</p>`;
-                }
-                currentElement = currentElement.next();
-            }
-        }
-    }
-
-    return description;
-}
