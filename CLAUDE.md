@@ -418,11 +418,28 @@ try {
 - Using `console.error` instead of `logger.error`
 - Missing logger import
 - CSS selector escaping issues
+- Using deprecated `isNaN()` instead of `Number.isNaN()`
+- String coercion without explicit conversion
 
 **Solutions**:
 ```typescript
 // ✅ Correct: Import and use logger
 import logger from '@/utils/logger';
+
+// ✅ Correct: Remove unused imports
+import { parseDate } from '@/utils/parse-date'; // ❌ Remove if not used
+
+// ✅ Correct: Use Number.isNaN instead of isNaN
+if (Number.isNaN(date.getTime())) {
+    // Handle invalid date
+}
+// ❌ Wrong: Using global isNaN
+if (isNaN(date.getTime())) { ... }
+
+// ✅ Correct: Explicit string conversion
+let description = String(title);
+// ❌ Wrong: Implicit coercion
+let description = `${title}`;
 
 // ✅ Correct: String.raw template for CSS selectors
 $(String.raw`.flex-1.min-w-0.max-w-[1120px]`).find(String.raw`.rounded-[16px]`)
