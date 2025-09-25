@@ -75,7 +75,9 @@ async function handler() {
                     const title = $titleLink.text().trim();
                     const link = $titleLink.attr('href');
 
-                    if (!title || !link) {return;}
+                    if (!title || !link) {
+                        return;
+                    }
 
                     // Skip if we've already processed this link
                     const fullLink = link.startsWith('http') ? link : `${baseUrl}${link}`;
