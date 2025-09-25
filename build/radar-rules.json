@@ -15831,6 +15831,28 @@
       }
     ]
   },
+  "gamma.app": {
+    "_name": "Gamma",
+    ".": [
+      {
+        "title": "Insights Blog by Language",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/insights",
+          "/:lang/insights"
+        ],
+        "target": "/gamma/insights/:lang"
+      },
+      {
+        "title": "Insights Blog",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/insights"
+        ],
+        "target": "/gamma/insights"
+      }
+    ]
+  },
   "gaoyu.me": {
     "_name": "Yu Gao",
     "www": [
@@ -33103,6 +33125,20 @@
           "/topic/:topicId"
         ],
         "target": "/peopo/topic/:topicId"
+      }
+    ]
+  },
+  "perplexity.ai": {
+    "_name": "Perplexity",
+    ".": [
+      {
+        "title": "Blog",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/hub",
+          "/hub"
+        ],
+        "target": "/perplexity/blog"
       }
     ]
   },

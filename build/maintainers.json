@@ -2541,6 +2541,12 @@
   "/eleduck/posts/:id?": [
     "running-grass"
   ],
+  "/elevenlabs/blog": [
+    "your-github-username"
+  ],
+  "/elevenlabs/blog/category/:category": [
+    "your-github-username"
+  ],
   "/elsevier/:journal/vol/:issue": [],
   "/elsevier/:journal/:issue": [],
   "/elsevier/:journal/latest": [],
@@ -2945,6 +2951,12 @@
   ],
   "/gamersky/review/:type?": [
     "yy4382"
+  ],
+  "/gamma/insights/:lang?": [
+    "claude"
+  ],
+  "/gamma/insights": [
+    "claude"
   ],
   "/gamme/:domain/:category?": [],
   "/gamme/:domain/tag/:tag": [],
@@ -5278,6 +5290,9 @@
     "emdoe",
     "DIYgod"
   ],
+  "/minimaxi/models": [
+    "DIYgod"
+  ],
   "/minimaxi/news": [
     ""
   ],
@@ -5485,6 +5500,9 @@
   ],
   "/natgeo/:cat/:type?": [
     "fengkx"
+  ],
+  "/nation.com/blog": [
+    "Claude"
   ],
   "/nationalgeographic/latest-stories": [
     "miles170"
@@ -6261,6 +6279,7 @@
   ],
   "/people/xjpjh/:keyword?/:year?": [],
   "/peopo/topic/:topicId?": [],
+  "/perplexity/blog": [],
   "/phoronix/:category?/:topic?": [
     "oppliate",
     "Rongronggg9"
