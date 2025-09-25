@@ -43,9 +43,9 @@ async function handler() {
                 const $element = $(element);
                 const titleElement = $element.find('h3 a');
                 const linkElement = $element.find('h3 a');
-                const subtitleElement = $element.find('.postPreview_subtitle__9cBhQ');
-                const authorElement = $element.find('.UserBaseInfo_textInfoContainer__JNjgO p:first-child');
-                const eyebrowElement = $element.find('.postPreview_eyebrow__uXR9L');
+                const subtitleElement = $element.find('[class*="postPreview_subtitle_"]');
+                const authorElement = $element.find('[class*="UserBaseInfo_textInfoContainer_"] p:first-child');
+                const eyebrowElement = $element.find('[class*="postPreview_eyebrow_"]');
 
                 const title = titleElement.text().trim();
                 const link = `${rootUrl}${linkElement.attr('href')}`;
@@ -83,7 +83,7 @@ async function handler() {
                                 pubDate = parseDate(dateString);
                             }
 
-                            const content = $article('.contentfulRichText_richText__rW7Oq').first().html();
+                            const content = $article('[class*=".contentfulRichText_richText"]').first().html();
 
                             return {
                                 ...item,
