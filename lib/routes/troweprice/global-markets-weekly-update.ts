@@ -7,13 +7,16 @@ import cache from '@/utils/cache';
 import logger from '@/utils/logger';
 
 export const route: Route = {
-    path: '/global-markets-weekly-update',
+    path: '/global-markets-weekly-update/:date?',
     name: 'Global Markets Weekly Update',
     categories: ['finance', 'new-media'],
-    example: '/troweprice/global-markets-weekly-update',
+    example: '/troweprice/global-markets-weekly-update/2025-09-19',
     maintainers: ['DIYgod'],
-    handler: async () => {
-        const baseUrl = 'https://www.troweprice.com/personal-investing/resources/insights/global-markets-weekly-update.html';
+    handler: async (ctx) => {
+        const { date } = ctx.req.param();
+        const baseUrl = date
+            ? `https://www.troweprice.com/personal-investing/resources/insights/global-markets-weekly-update?date=${date}`
+            : 'https://www.troweprice.com/personal-investing/resources/insights/global-markets-weekly-update.html';
 
         const feed = await cache.tryGet(baseUrl, async () => {
             const response = await ofetch(baseUrl);
