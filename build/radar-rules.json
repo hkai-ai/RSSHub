@@ -5316,6 +5316,19 @@
       }
     ]
   },
+  "americanbar.org": {
+    "_name": "American Bar Association",
+    "www": [
+      {
+        "title": "Law Technology Today",
+        "docs": "https://docs.rsshub.app/routes/journal",
+        "source": [
+          "/groups/law_practice/resources/law-technology-today/"
+        ],
+        "target": "/americanbar/law-technology-today"
+      }
+    ]
+  },
   "amz123.com": {
     "_name": "Amz123",
     ".": [
