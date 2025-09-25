@@ -22,7 +22,6 @@ export const route: Route = {
             // Extract publication date from the page
             const dateElement = $('#main-content_body-band-1105586714_personal-investor-body_paragraph-copy-copy .paragraph-contents p').first();
             const dateText = dateElement.text();
-            logger.debug('Date text found:', dateText);
 
             // Extract date from format like "markets & economy | september 19, 2025"
             const dateMatch = dateText.match(/\|\s*([a-zA-Z]+)\s+(\d{1,2}),\s*(\d{4})/);
@@ -32,8 +31,7 @@ export const route: Route = {
             }
 
             const [, month, day, year] = dateMatch;
-            const dateString = `${month} ${day}, ${year}`;
-            logger.debug('Date string extracted:', dateString);
+            const dateString = `${month} ${day}, ${year} 8:00 AM`;
 
             // Parse date
             const parsedDate = parseDate(dateString);
@@ -43,7 +41,6 @@ export const route: Route = {
             }
 
             const pubDate = timezone(parsedDate, -5); // EST timezone (UTC-5)
-            logger.debug('Final pubDate:', pubDate.toISOString());
 
             // Extract title
             const title = $('h1.trp-darkest-gray.text-light').text().trim();
