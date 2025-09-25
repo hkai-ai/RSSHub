@@ -1299,6 +1299,9 @@
     "yuxinliu-alex",
     "nczitzk"
   ],
+  "/capcut/resource/:category?": [
+    "your-github-username"
+  ],
   "/capitalmind/insights": [
     "Rjnishant530"
   ],
@@ -2951,9 +2954,6 @@
   ],
   "/gamersky/review/:type?": [
     "yy4382"
-  ],
-  "/gamma/insights/:lang?": [
-    "claude"
   ],
   "/gamma/insights": [
     "claude"
@@ -5391,6 +5391,9 @@
   "/mohw/clarification": [
     "nczitzk"
   ],
+  "/monica/changelog": [
+    "claude-assistant"
+  ],
   "/moodysmismicrosite/report/:industry?": [
     "Cedaric"
   ],
@@ -6280,6 +6283,9 @@
   "/people/xjpjh/:keyword?/:year?": [],
   "/peopo/topic/:topicId?": [],
   "/perplexity/blog": [],
+  "/perplexity/changelog": [
+    "your-github-username"
+  ],
   "/phoronix/:category?/:topic?": [
     "oppliate",
     "Rongronggg9"
@@ -6680,6 +6686,9 @@
   "/qstheory/magazine/:magazine": [
     "TonyRL",
     "cscnk52"
+  ],
+  "/quark/articles": [
+    "user"
   ],
   "/questmobile/report/:industry?/:label?": [
     "nczitzk"
@@ -7632,6 +7641,9 @@
   "/subhd/:type?/:category?": [],
   "/substack/subscribe/:user": [
     "pseudoyu"
+  ],
+  "/suno/blog/:tag?": [
+    "claude-code"
   ],
   "/supchina/": [
     "nczitzk"

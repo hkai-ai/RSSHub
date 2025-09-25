@@ -15835,15 +15835,6 @@
     "_name": "Gamma",
     ".": [
       {
-        "title": "Insights Blog by Language",
-        "docs": "https://docs.rsshub.app/routes/programming",
-        "source": [
-          "/insights",
-          "/:lang/insights"
-        ],
-        "target": "/gamma/insights/:lang"
-      },
-      {
         "title": "Insights Blog",
         "docs": "https://docs.rsshub.app/routes/programming",
         "source": [
@@ -33139,6 +33130,15 @@
           "/hub"
         ],
         "target": "/perplexity/blog"
+      },
+      {
+        "title": "Changelog",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/changelog",
+          "/changelog"
+        ],
+        "target": "/perplexity/changelog"
       }
     ]
   },
@@ -34644,6 +34644,19 @@
           "/:magazine/mulu.htm"
         ],
         "target": "/qstheory/magazine/:magazine"
+      }
+    ]
+  },
+  "quark.cn": {
+    "_name": "夸克",
+    ".": [
+      {
+        "title": "官方快讯",
+        "docs": "https://docs.rsshub.app/routes/new-media",
+        "source": [
+          "/articles"
+        ],
+        "target": "/quark/articles"
       }
     ]
   },
@@ -38295,6 +38308,19 @@
           "/"
         ],
         "target": "/studygolang/go/:id?"
+      }
+    ]
+  },
+  "suno.com": {
+    "_name": "Suno",
+    ".": [
+      {
+        "title": "Blog",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/blog"
+        ],
+        "target": "/suno/blog"
       }
     ]
   },
