@@ -3,7 +3,7 @@ import ofetch from '@/utils/ofetch';
 import { load } from 'cheerio';
 import { parseDate } from '@/utils/parse-date';
 import cache from '@/utils/cache';
-import { logger } from '@/utils/logger';
+import logger from '@/utils/logger';
 
 export const route: Route = {
     path: '/blog/category/:category',
@@ -33,7 +33,15 @@ export const route: Route = {
                 const description = $('meta[name="description"]').attr('content') || `ElevenLabs Blog posts in ${category} category`;
 
                 // Extract articles from the category page
-                const articles = [];
+                const articles: Array<{
+                    title: string;
+                    link: string;
+                    description: string;
+                    author: string;
+                    category: string;
+                    pubDate?: Date;
+                    image: string;
+                }> = [];
                 $('article.card').each((_, element) => {
                     const $article = $(element);
 

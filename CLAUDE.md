@@ -135,6 +135,7 @@ import { art } from '@/utils/render';          // Template rendering
 - Cheerio: Use `.toArray()` instead of `.get()`
 - **No unused variables**: Remove or use all declared variables
 - **Import logger**: Always import `logger` from `@/utils/logger` for error logging
+- **Type annotations**: Always provide explicit types for arrays and objects
 
 ### Caching Best Practices
 ```typescript
@@ -378,6 +379,30 @@ const title = 'test'; // Never used
 const description = 'desc'; // Never used
 
 // ✅ Correct: Remove unused variables or use them
+```
+
+### 4. TypeScript Type Annotations
+**Problem**: Missing type annotations for arrays and objects
+**Solution**: Always provide explicit types for better type safety
+
+**Examples**:
+```typescript
+// ❌ Wrong: No type annotation
+const articles = [];
+const items = [];
+
+// ✅ Correct: Explicit type annotations
+const articles: Array<{
+    title: string;
+    link: string;
+    description: string;
+    author: string;
+    category: string;
+    pubDate?: Date;
+    image: string;
+}> = [];
+
+const items: Array<{ link: string; title: string }> = [];
 ```
 
 ### 3. Git Commit Process

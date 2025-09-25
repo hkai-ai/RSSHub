@@ -27,7 +27,15 @@ export const route: Route = {
                 const description = $('meta[name="description"]').attr('content') || 'ElevenLabs Blog - Voice AI research and deployment updates';
 
                 // Extract articles from the blog page
-                const articles = [];
+                const articles: Array<{
+                    title: string;
+                    link: string;
+                    description: string;
+                    author: string;
+                    category: string;
+                    pubDate?: Date;
+                    image: string;
+                }> = [];
                 $('article.card').each((_, element) => {
                     const $article = $(element);
 
