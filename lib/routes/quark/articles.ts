@@ -40,10 +40,10 @@ export const route: Route = {
                 try {
                     // Get the window.__wh_data__ object from the page
                     const data = await page.evaluate(() => {
-                        if (window.__wh_data__ && window.__wh_data__.page) {
+                        if ((window as any).__wh_data__ && (window as any).__wh_data__.page) {
                             // Find the key containing tabsConfig
-                            for (const key in window.__wh_data__.page) {
-                                const pageData = window.__wh_data__.page[key];
+                            for (const key in (window as any).__wh_data__.page) {
+                                const pageData = (window as any).__wh_data__.page[key];
                                 if (pageData && pageData.tabsConfig) {
                                     return pageData.tabsConfig;
                                 }
