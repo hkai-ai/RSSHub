@@ -42,7 +42,7 @@ async function handler() {
             .toSorted((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .slice(0, 50)
             .map((entry) => {
-                const pathWithoutExtension = entry.path.replace(/\.(ipynb|md)$/, '');
+                const pathWithoutExtension = entry.path.replace(/\.(ipynb|md)$/, '').toLowerCase();
 
                 return {
                     title: entry.title,
