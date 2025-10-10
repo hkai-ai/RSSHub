@@ -173,6 +173,6 @@ async function handler() {
                 item: items,
             };
         },
-        300
-    ); // Cache for 5 minutes
+        3600 * 2
+    );
 }

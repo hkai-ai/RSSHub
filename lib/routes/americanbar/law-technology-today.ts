@@ -82,6 +82,6 @@ export const route: Route = {
                     item: items,
                 };
             },
-            3600
-        ), // 1 hour cache
+            3600 * 2
+        ),
 };

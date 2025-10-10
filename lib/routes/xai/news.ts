@@ -89,6 +89,6 @@ async function handler() {
                 item: items,
             };
         },
-        3600
+        3600 * 2
     );
 }

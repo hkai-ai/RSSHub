@@ -2,25 +2,13 @@ import type { Route } from '@/types';
 import { load } from 'cheerio';
 import { parseDate } from '@/utils/parse-date';
 import cache from '@/utils/cache';
-import { unlockWebsite } from '@/utils/bright-data-unlocker';
+import ofetch from '@/utils/ofetch';
 
 export const route: Route = {
     path: '/blog',
     categories: ['programming'],
     example: '/neota/blog',
     parameters: {},
-    features: {
-        requireConfig: [
-            {
-                name: 'BRIGHTDATA_API_KEY',
-                description: 'Bright Data API key for bypassing anti-bot measures',
-            },
-            {
-                name: 'BRIGHTDATA_UNLOCKER_ZONE',
-                description: 'Bright Data zone identifier for web unlocker',
-            },
-        ],
-    },
     radar: [
         {
             source: ['neota.com/blog/'],
@@ -35,7 +23,7 @@ export const route: Route = {
         return await cache.tryGet(
             currentUrl,
             async () => {
-                const response = await unlockWebsite(currentUrl);
+                const response = await ofetch(currentUrl);
                 const $ = load(response);
 
                 const items = $('.bde-loop-item.ee-post')

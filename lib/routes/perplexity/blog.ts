@@ -67,7 +67,7 @@ export const route: Route = {
                         // Fetch the article page to extract the publication date
                         let pubDate: Date | undefined;
                         try {
-                            const articleHtml = await unlockWebsite(fullLink);
+                            const articleHtml = await cache.tryGet(fullLink, () => unlockWebsite(fullLink), 3600 * 24 * 7);
                             const $article = load(articleHtml);
 
                             const dateContainer = $article("p:contains('Published on')").parent().next();
@@ -131,7 +131,7 @@ export const route: Route = {
                     item: items,
                 };
             },
-            300
+            3600 * 2
         );
 
         return data;

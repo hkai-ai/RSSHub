@@ -3,7 +3,7 @@ import ofetch from '@/utils/ofetch';
 import logger from '@/utils/logger';
 
 const apiKey = config.brightdata?.apiKey || '';
-const zone = config.brightdata?.zone || '';
+const zone = config.brightdata?.unlockerZone || '';
 const baseUrl = 'https://api.brightdata.com';
 
 if (!apiKey) {

@@ -435,7 +435,10 @@ export type Config = {
     };
     brightdata: {
         apiKey?: string;
-        zone?: string;
+        unlockerZone?: string;
+        residentialProxy?: string;
+        ispProxy?: string;
+        dataCenterProxy?: string;
     };
 };
 
@@ -916,7 +919,10 @@ const calculateValue = () => {
         },
         brightdata: {
             apiKey: envs.BRIGHTDATA_API_KEY,
-            zone: envs.BRIGHTDATA_UNLOCKER_ZONE,
+            unlockerZone: envs.BRIGHTDATA_UNLOCKER_ZONE,
+            residentialProxy: envs.BRIGHTDATA_RESIDENTIAL_PROXY,
+            ispProxy: envs.BRIGHTDATA_ISP_PROXY,
+            dataCenterProxy: envs.BRIGHTDATA_DATACENTER_PROXY,
         },
     };
 
