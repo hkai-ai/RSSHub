@@ -25448,20 +25448,20 @@
     "_name": "Lovart",
     ".": [
       {
-        "title": "Lovart 官方博客",
+        "title": "Lovart Official Blog",
         "docs": "https://docs.rsshub.app/routes/blog",
         "source": [
           "/blog",
-          "/zh/blog"
+          "/*/blog"
         ],
         "target": "/lovart/blog"
       },
       {
-        "title": "Lovart 官方资讯",
+        "title": "Lovart Official News",
         "docs": "https://docs.rsshub.app/routes/new-media",
         "source": [
           "/news",
-          "/zh/news"
+          "/*/news"
         ],
         "target": "/lovart/news"
       }

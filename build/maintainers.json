@@ -5033,11 +5033,11 @@
   "/lorientlejour/:category?": [
     "quiniapiezoelectricity"
   ],
-  "/lovart/blog": [
-    "your-github-username"
+  "/lovart/blog/:lang?": [
+    "XruiDD"
   ],
-  "/lovart/news": [
-    "your-github-username"
+  "/lovart/news/:lang?": [
+    "XruiDD"
   ],
   "/lovelive-anime/news/:abbr?/:category?/:option?": [
     "axojhf",
