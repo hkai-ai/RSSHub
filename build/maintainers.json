@@ -6192,8 +6192,9 @@
   ],
   "/oschina/u/:uid": [],
   "/oschina/user/:id": [],
-  "/oshwhub/:sortType?": [
-    "tylinux"
+  "/oshwhub/explore/:type?/:origin?/:projectTag{.+}?": [
+    "tylinux",
+    "nczitzk"
   ],
   "/osu/latest-ranked/:routeParams?": [
     "nfnfgo"
@@ -6849,6 +6850,9 @@
     "amakerlife"
   ],
   "/researchgate/publications/:id": [],
+  "/resetera/thread/:id": [
+    "ZEN-GUO"
+  ],
   "/resonac/products": [
     "valuex"
   ],
