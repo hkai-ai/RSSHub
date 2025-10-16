@@ -3,6 +3,8 @@ import { load } from 'cheerio';
 import cache from '@/utils/cache';
 import { DataItem, Route } from '@/types';
 import pMap from 'p-map';
+import { parseDate } from '@/utils/parse-date';
+import timezone from '@/utils/timezone';
 
 export const route: Route = {
     path: '/news',
@@ -33,7 +35,7 @@ async function handler(ctx) {
             const $el = $(el);
             const title = $el.find('h3').text().trim();
             const href = $el.attr('href') ?? '';
-            const pubDate = $el.find('p.detail-m.agate').text().trim() || $el.find('div[class^="PostList_post-date__"]').text().trim(); // legacy selector used roughly before Jan 2025
+            const pubDate = timezone(parseDate($el.find('p.detail-m.agate').text().trim() || $el.find('div[class^="PostList_post-date__"]').text().trim(), ['MMM DD, YYYY', 'MMM D, YYYY'], 'en'), 0); // legacy selector used roughly before Jan 2025
             const fullLink = href.startsWith('http') ? href : `https://www.anthropic.com${href}`;
             return {
                 title,
@@ -73,7 +75,11 @@ async function handler(ctx) {
                 });
 
                 item.description = content.html() ?? undefined;
-
+                const re = /\\"post\\":\s*{\s*[\s\S]*?\\"_createdAt\\":\s*\\"(.*?)\\"/;
+                const m = response.match(re);
+                if (m?.[1]) {
+                    item.pubDate = new Date(m[1]);
+                }
                 return item;
             }),
         { concurrency: 5 }
