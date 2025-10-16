@@ -47,7 +47,7 @@ async function handler(ctx) {
     const out = await pMap(
         list,
         (item) =>
-            cache.tryGet(item.link!, async () => {
+            cache.tryGet('V2_' + item.link!, async () => {
                 const response = await ofetch(item.link!);
                 const $ = load(response);
 
@@ -75,7 +75,7 @@ async function handler(ctx) {
                 });
 
                 item.description = content.html() ?? undefined;
-                const re = /\\"post\\":\s*{\s*[\s\S]*?\\"_createdAt\\":\s*\\"(.*?)\\"/;
+                const re = /\\"post\\":\s*{\s*[\s\S]*?\\"_updatedAt\\":\s*\\"(.*?)\\"/;
                 const m = response.match(re);
                 if (m?.[1]) {
                     item.pubDate = new Date(m[1]);
