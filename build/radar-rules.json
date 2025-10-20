@@ -11711,6 +11711,19 @@
       }
     ]
   },
+  "cognition.ai": {
+    "_name": "cognition",
+    ".": [
+      {
+        "title": "Blog",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/blog/1"
+        ],
+        "target": "/cognition/blog"
+      }
+    ]
+  },
   "cohere.com": {
     "_name": "Cohere",
     ".": [
@@ -12303,6 +12316,29 @@
           "/"
         ],
         "target": "/csu/career"
+      }
+    ]
+  },
+  "csust.edu.cn": {
+    "_name": "长沙理工大学",
+    "www": [
+      {
+        "title": "通告公示",
+        "docs": "https://docs.rsshub.app/routes/university",
+        "source": [
+          "/tggs.htm",
+          "/"
+        ],
+        "target": "/csust/tggs"
+      },
+      {
+        "title": "学科学术",
+        "docs": "https://docs.rsshub.app/routes/university",
+        "source": [
+          "/xkxs.htm",
+          "/"
+        ],
+        "target": "/csust/xkxs"
       }
     ]
   },
@@ -28953,6 +28989,20 @@
       }
     ]
   },
+  "miyuki.jp": {
+    "_name": "中島みゆき Official",
+    ".": [
+      {
+        "title": "News",
+        "docs": "https://docs.rsshub.app/routes/new-media",
+        "source": [
+          "/",
+          "/s/y10/news/list"
+        ],
+        "target": "/miyuki/news"
+      }
+    ]
+  },
   "modelscope.cn": {
     "_name": "ModelScope 魔搭社区",
     "community": [
@@ -31413,6 +31463,19 @@
           "/toh/:band/:model"
         ],
         "target": "/openwrt/releases/:model"
+      }
+    ]
+  },
+  "ornl.gov": {
+    "_name": "Oak Ridge National Laboratory",
+    "www": [
+      {
+        "title": "All News",
+        "docs": "https://docs.rsshub.app/routes/government",
+        "source": [
+          "/all-news"
+        ],
+        "target": "/ornl/all-news"
       }
     ]
   },
@@ -39092,6 +39155,19 @@
           "/article/list/gd.html"
         ],
         "target": "/stcn/article/rank/gd"
+      }
+    ]
+  },
+  "stdaily.com": {
+    "_name": "中国科技网",
+    "epaper": [
+      {
+        "title": "科技日报",
+        "docs": "https://docs.rsshub.app/routes/traditional-media",
+        "source": [
+          "/statics/technology-site/index.html"
+        ],
+        "target": "/stdaily/digitalpaper"
       }
     ]
   },
