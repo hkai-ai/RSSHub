@@ -149,7 +149,8 @@ export const route: Route = {
                     throw error;
                 }
             },
-            3600 * 2
+            3600 * 2,
+            false
         );
 
         return data;
