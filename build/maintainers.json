@@ -2488,6 +2488,18 @@
   "/eastday/sh": [
     "saury"
   ],
+  "/eastmoney/gerenzhongxin/cfh/:uid": [
+    "AwesomeDog"
+  ],
+  "/eastmoney/gerenzhongxin/gather/:uid": [
+    "AwesomeDog"
+  ],
+  "/eastmoney/gerenzhongxin/guba/:uid": [
+    "AwesomeDog"
+  ],
+  "/eastmoney/gerenzhongxin/trpl/:uid": [
+    "AwesomeDog"
+  ],
   "/eastmoney/report/:category": [
     "syzq"
   ],
@@ -3130,6 +3142,9 @@
   "/github/notifications": [
     "zhzy0077"
   ],
+  "/github/org_event/:org/:types?": [
+    "mslxl"
+  ],
   "/github/feed/:user/:types?": [
     "RtYkk"
   ],
@@ -3139,6 +3154,9 @@
   ],
   "/github/pulse/:user/:repo/:period?": [
     "jameschensmith"
+  ],
+  "/github/repo_event/:owner/:repo/:types?": [
+    "mslxl"
   ],
   "/github/repos/:user/:type?/:sort?": [
     "DIYgod"
@@ -3158,6 +3176,9 @@
   "/github/trending/:since/:language/:spoken_language?": [
     "DIYgod",
     "jameschensmith"
+  ],
+  "/github/user_event/:username/:types?": [
+    "mslxl"
   ],
   "/github/wiki/:user/:repo/:page?": [
     "TonyRL"
@@ -3356,6 +3377,9 @@
   "/gov/maoming/*": [],
   "/gov/maonan/:category": [
     "ShuiHuo"
+  ],
+  "/gov/mee/nnsa/:category{.+}?": [
+    "nczitzk"
   ],
   "/gov/mee/ywdt/:category?": [
     "liuxsdev"
@@ -5243,7 +5267,8 @@
     "yana9i"
   ],
   "/mercari/search/:query": [
-    "yana9i, Tsuyumi25"
+    "yana9i",
+    "Tsuyumi25"
   ],
   "/meta/ai/blog": [
     "TonyRL"
@@ -5937,6 +5962,9 @@
   ],
   "/ntdtv/:language/:id": [
     "Fatpandac"
+  ],
+  "/ntrblog/articles": [
+    "keocheung"
   ],
   "/nua/dc/:type": [
     "evnydd0sf"
