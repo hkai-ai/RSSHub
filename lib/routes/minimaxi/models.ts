@@ -113,7 +113,8 @@ export const route: Route = {
                     await destory();
                 }
             },
-            3600
+            3600,
+            false
         ); // Cache for 1 hour
     },
 };

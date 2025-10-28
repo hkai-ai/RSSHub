@@ -134,7 +134,8 @@ export const route: Route = {
                     throw error;
                 }
             },
-            900
+            900,
+            false
         ); // Cache list for 15 minutes
     },
 };

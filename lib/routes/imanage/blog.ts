@@ -62,29 +62,33 @@ async function handler(ctx) {
                         }
 
                         // Fetch individual article for more details
-                        const articleData = await cache.tryGet(fullLink, async () => {
-                            try {
-                                const articleResponse = await ofetch(fullLink);
-                                const $$ = load(articleResponse);
+                        const articleData = await cache.tryGet(
+                            fullLink,
+                            async () => {
+                                try {
+                                    const articleResponse = await ofetch(fullLink);
+                                    const $$ = load(articleResponse);
 
-                                // Extract publication date from meta section
-                                const dateText = $$('.meta .date time').text().trim();
-                                const pubDate = dateText ? parseDate(dateText) : null;
+                                    // Extract publication date from meta section
+                                    const dateText = $$('.meta .date time').text().trim();
+                                    const pubDate = dateText ? parseDate(dateText) : null;
 
-                                // Extract full content
-                                const content = $$('.text.base-text').first().html();
+                                    // Extract full content
+                                    const content = $$('.text.base-text').first().html();
 
-                                return {
-                                    pubDate,
-                                    description: content || description,
-                                };
-                            } catch {
-                                return {
-                                    pubDate: null,
-                                    description,
-                                };
-                            }
-                        });
+                                    return {
+                                        pubDate,
+                                        description: content || description,
+                                    };
+                                } catch {
+                                    return {
+                                        pubDate: null,
+                                        description,
+                                    };
+                                }
+                            },
+                            24 * 60 * 60 * 1000
+                        );
 
                         return {
                             title,
@@ -107,6 +111,7 @@ async function handler(ctx) {
                 item: validItems,
             };
         },
-        3600
+        3600,
+        false
     ); // Cache for 1 hour
 }

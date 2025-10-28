@@ -40,7 +40,8 @@ async function handler(ctx) {
                     'User-Agent': 'RSSHUB/1.0',
                 },
             }),
-        30 * 60 * 1000 // 30 minutes cache
+        30 * 60 * 1000, // 30 minutes cache
+        false
     );
 
     const $ = load(response);

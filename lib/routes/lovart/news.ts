@@ -94,6 +94,7 @@ async function handler(ctx: Context) {
                 await destory();
             }
         },
-        3600
+        3600,
+        false
     );
 }

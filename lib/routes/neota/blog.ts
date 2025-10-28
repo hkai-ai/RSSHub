@@ -68,7 +68,8 @@ export const route: Route = {
                     description: 'Neota blog posts',
                 };
             },
-            3600
+            3600,
+            false
         );
     },
 };

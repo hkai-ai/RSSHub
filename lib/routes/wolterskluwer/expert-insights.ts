@@ -199,7 +199,8 @@ export const route: Route = {
                     item: items,
                 };
             },
-            3600
+            3600,
+            false
         ); // Cache for 1 hour
     },
 };

@@ -129,7 +129,8 @@ export const route: Route = {
                     item: items,
                 };
             },
-            1800
+            1800,
+            false
         ); // 30-minute cache
     },
 };

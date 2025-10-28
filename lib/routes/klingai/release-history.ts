@@ -77,7 +77,8 @@ async function handler() {
                 await destory();
             }
         },
-        30 * 60 * 1000
+        30 * 60 * 1000,
+        false
     ); // 30分钟缓存
 
     return {

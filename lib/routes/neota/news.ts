@@ -68,7 +68,8 @@ export const route: Route = {
                     description: 'Explore what Neota has been up to recently in the industry',
                 };
             },
-            3600
+            3600,
+            false
         );
     },
 };
