@@ -153,7 +153,8 @@ export const route: Route = {
                     throw error;
                 }
             },
-            1800
+            1800,
+            false
         ); // 30 minutes cache for main feed
     },
 };

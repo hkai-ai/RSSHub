@@ -125,6 +125,7 @@ async function handler(ctx) {
                 item: validItems,
             };
         },
-        3600
+        3600,
+        false
     ); // Cache for 1 hour
 }
