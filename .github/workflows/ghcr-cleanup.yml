@@ -27,6 +27,7 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    if: github.repository == 'DIYgod/RSSHub'
     permissions:
       packages: write
       contents: read
