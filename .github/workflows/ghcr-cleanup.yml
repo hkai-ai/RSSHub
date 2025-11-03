@@ -1,14 +1,6 @@
 name: 'Clean up GHCR Packages'
 
 on:
-  # 每小时执行一次（快速清理模式）
-  schedule:
-    - cron: '0 * * * *'
-  # Docker 发布完成后自动触发
-  workflow_run:
-    workflows: ['Docker Release']
-    types:
-      - completed
   # 支持手动触发
   workflow_dispatch:
     inputs:
