@@ -220,7 +220,8 @@ const items = await Promise.all(
 return await cache.tryGet(currentUrl, async () => {
     // All data fetching and processing logic here
     return { title, link, description, item: items };
-}, 300); // 5-minute cache
+}, 300, false); //do not refresh expiration time , default is true
+
 ```
 - **Benefits**: Reduces server load, prevents rate limiting, improves response times, respects target site resources
 
