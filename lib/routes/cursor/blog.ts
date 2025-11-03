@@ -30,7 +30,7 @@ export const handler = async (ctx: Context): Promise<Data> => {
 
             const title = $link.find('p').first().text().trim();
             const description = $link.find('p').eq(1).text().trim();
-            const pubDate = parseDate($el.find('time').first().text().trim());
+            const pubDate = parseDate($el.find('time').first().attr('datetime')!.trim());
 
             const href = $link.attr('href');
             const link = href ? new URL(href, baseUrl).href : undefined;
