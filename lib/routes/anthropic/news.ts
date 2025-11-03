@@ -1,10 +1,7 @@
 import ofetch from '@/utils/ofetch';
-import { load } from 'cheerio';
 import cache from '@/utils/cache';
 import { DataItem, Route } from '@/types';
-import pMap from 'p-map';
-import { parseDate } from '@/utils/parse-date';
-import timezone from '@/utils/timezone';
+import { extractNextFlightObjects } from '@/utils/next-data';
 
 export const route: Route = {
     path: '/news',
@@ -22,73 +19,45 @@ export const route: Route = {
     url: 'www.anthropic.com/news',
 };
 
-async function handler(ctx) {
+async function handler() {
     const link = 'https://www.anthropic.com/news';
-    const response = await ofetch(link);
-    const $ = load(response);
-    const limit = ctx.req.query('limit') ? Number.parseInt(ctx.req.query('limit'), 10) : 20;
-
-    const list: DataItem[] = $('.contentFadeUp a')
-        .toArray()
-        .slice(0, limit)
-        .map((el) => {
-            const $el = $(el);
-            const title = $el.find('h3').text().trim();
-            const href = $el.attr('href') ?? '';
-            const pubDate = timezone(parseDate($el.find('p.detail-m.agate').text().trim() || $el.find('div[class^="PostList_post-date__"]').text().trim(), ['MMM DD, YYYY', 'MMM D, YYYY'], 'en'), 0); // legacy selector used roughly before Jan 2025
-            const fullLink = href.startsWith('http') ? href : `https://www.anthropic.com${href}`;
-            return {
-                title,
-                link: fullLink,
-                pubDate,
-            };
-        });
-
-    const out = await pMap(
-        list,
-        (item) =>
-            cache.tryGet('V2_' + item.link!, async () => {
-                const response = await ofetch(item.link!);
-                const $ = load(response);
-
-                const content = $('#main-content');
-
-                // Remove meaningless information (heading, sidebar, quote carousel, footer and codeblock controls)
-                $(`
-                    [class^="PostDetail_post-heading"],
-                    [class^="ArticleDetail_sidebar-container"],
-                    [class^="QuoteCarousel_carousel-controls"],
-                    [class^="PostDetail_b-social-share"],
-                    [class^="LandingPageSection_root"],
-                    [class^="CodeBlock_controls"]
-                `).remove();
-
-                content.find('img').each((_, e) => {
-                    const $e = $(e);
-                    $e.removeAttr('style srcset');
-                    const src = $e.attr('src');
-                    const params = new URLSearchParams(src);
-                    const newSrc = params.get('/_next/image?url');
-                    if (newSrc) {
-                        $e.attr('src', newSrc);
+    const items = await cache.tryGet(link, async () => {
+        const response = await ofetch(link);
+        const data = extractNextFlightObjects(response);
+        if (data.length === 0) {
+            throw new Error('next data is undefined');
+        }
+        const items: DataItem[] = [];
+        for (const chunk of data) {
+            if (chunk.page && chunk.page.sections) {
+                const sections = chunk.page.sections as any[];
+                for (const section of sections) {
+                    if (section.posts) {
+                        const posts = section.posts as any[];
+                        for (const post of posts) {
+                            const pubDate = new Date(post.publishedOn);
+                            const link = 'https://www.anthropic.com/' + post.directories[0].value + '/' + post.slug.current;
+                            const description = post.summary;
+                            const title = post.title;
+                            const image = post.cardPhoto?.url;
+                            items.push({
+                                pubDate,
+                                link,
+                                description,
+                                title,
+                                image,
+                            });
+                        }
                     }
-                });
-
-                item.description = content.html() ?? undefined;
-                const re = /\\"post\\":\s*{\s*[\s\S]*?\\"_updatedAt\\":\s*\\"(.*?)\\"/;
-                const m = response.match(re);
-                if (m?.[1]) {
-                    item.pubDate = new Date(m[1]);
                 }
-                return item;
-            }),
-        { concurrency: 5 }
-    );
-
+            }
+        }
+        return items;
+    });
     return {
         title: 'Anthropic News',
         link,
         description: 'Latest news from Anthropic',
-        item: out,
+        item: items.toSorted((a, b) => (b.pubDate as Date).getTime() - (a.pubDate as Date).getTime()),
     };
 }

@@ -1,9 +1,9 @@
 import ofetch from '@/utils/ofetch';
-import { load } from 'cheerio';
 import cache from '@/utils/cache';
-import { Route } from '@/types';
-import pMap from 'p-map';
+import { DataItem, Route } from '@/types';
 import { parseDate } from '@/utils/parse-date';
+import { extractNextFlightObjects } from '@/utils/next-data';
+import timezone from '@/utils/timezone';
 
 export const route: Route = {
     path: '/engineering',
@@ -23,46 +23,39 @@ export const route: Route = {
 async function handler() {
     const baseUrl = 'https://www.anthropic.com';
     const link = `${baseUrl}/engineering`;
-    const response = await ofetch(link);
-    const $ = load(response);
-
-    const list = $('a[class^="ArticleList_cardLink__"]')
-        .toArray()
-        .map((element) => {
-            const $e = $(element);
-            return {
-                title: $e.find('h2, h3').text().trim(),
-                link: `${baseUrl}${$e.attr('href')}`,
-            };
-        });
-
-    const items = await pMap(
-        list,
-        (item) =>
-            cache.tryGet(item.link, async () => {
-                const response = await ofetch(item.link);
-                const $ = load(response);
-
-                const content = $('div[class^="Body_body__"]');
-                content.find('img').each((_, e) => {
-                    const $e = $(e);
-                    $e.removeAttr('style srcset');
-                    const src = $e.attr('src');
-                    const params = new URLSearchParams(src);
-                    const newSrc = params.get('/_next/image?url');
-                    if (newSrc) {
-                        $e.attr('src', newSrc);
+    const items = await cache.tryGet(link, async () => {
+        const response = await ofetch(link);
+        const data = extractNextFlightObjects(response);
+        if (data.length === 0) {
+            throw new Error('next data is undefined');
+        }
+        const items: DataItem[] = [];
+        for (const chunk of data) {
+            if (chunk.page && chunk.page.sections) {
+                const sections = chunk.page.sections as any[];
+                for (const section of sections) {
+                    if (section.articles) {
+                        const articles = section.articles as any[];
+                        for (const article of articles) {
+                            const pubDate = timezone(parseDate(article.publishedOn), 0);
+                            const link = 'https://www.anthropic.com/engineering/' + article.slug.current;
+                            const description = article.summary;
+                            const title = article.title;
+                            const image = article.cardImage?.url;
+                            items.push({
+                                pubDate,
+                                link,
+                                description,
+                                title,
+                                image,
+                            });
+                        }
                     }
-                });
-
-                item.pubDate = parseDate($('p[class*="HeroEngineering_date__"]').text().trim().replaceAll('Published ', ''));
-                item.description = content.html();
-
-                return item;
-            }),
-        { concurrency: 5 }
-    );
-
+                }
+            }
+        }
+        return items;
+    });
     return {
         title: 'Anthropic Engineering',
         link,
