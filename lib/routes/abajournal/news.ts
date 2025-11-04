@@ -1,4 +1,4 @@
-import { Route } from '@/types';
+import { DataItem, Route } from '@/types';
 import cache from '@/utils/cache';
 import ofetch from '@/utils/ofetch';
 import { load } from 'cheerio';
@@ -32,10 +32,10 @@ async function handler() {
     const baseUrl = 'https://www.abajournal.com';
     const url = `${baseUrl}/news`;
 
-    const response = await cache.tryGet(url, async () => await ofetch(url), 5 * 60 * 1000); // Cache for 5 minutes
+    const response = await ofetch(url);
 
     const $ = load(response);
-    const items = [];
+    const items: DataItem[] = [];
 
     // Parse articles from the specific structure in the HTML
     $('.col-xs-12.col-md-8')
@@ -80,28 +80,29 @@ async function handler() {
                 title,
                 link,
                 pubDate,
-                category: category || undefined,
+                category: category ? [category] : [],
                 guid: link,
             });
         });
 
     // Get detailed content for each article
     const enrichedItems = await Promise.all(
-        items.slice(0, 20).map(
-            (item) =>
+        items
+            .filter((item) => item.link)
+            .map((item) =>
                 cache.tryGet(
-                    `content:${item.link}`,
+                    item.link!,
                     async () => {
                         try {
                             // Skip external links for content fetching
-                            if (!item.link.includes('abajournal.com')) {
+                            if (!item.link!.includes('abajournal.com')) {
                                 return {
                                     ...item,
                                     description: `Category: ${item.category || 'General'}`,
                                 };
                             }
 
-                            const articleResponse = await ofetch(item.link);
+                            const articleResponse = await ofetch(item.link!);
                             const $article = load(articleResponse);
 
                             // Remove unwanted elements
@@ -150,9 +151,9 @@ async function handler() {
                             };
                         }
                     },
-                    30 * 60 * 1000
-                ) // Cache article content for 30 minutes
-        )
+                    60 * 60 * 24 * 7
+                )
+            )
     );
 
     return {
@@ -160,6 +161,6 @@ async function handler() {
         link: url,
         description: 'Latest news from the American Bar Association Journal',
         item: enrichedItems.filter((item) => item.title && item.link),
-        language: 'en',
+        language: 'en' as const,
     };
 }

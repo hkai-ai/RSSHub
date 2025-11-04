@@ -1,7 +1,5 @@
 import { Route, ViewType } from '@/types';
-import cache from '@/utils/cache';
 import { load } from 'cheerio';
-import { config } from '@/config';
 import { parseDate } from '@/utils/parse-date';
 import sanitizeHtml from 'sanitize-html';
 import { getPuppeteerPage } from '@/utils/puppeteer';
@@ -37,27 +35,20 @@ export const route: Route = {
 async function handler(ctx) {
     const { topic } = ctx.req.param();
     const link = `https://www.economist.com/topics/${topic}`;
+    const { page, destory } = await getPuppeteerPage(link, {
+        gotoConfig: { waitUntil: 'networkidle0' },
+    });
 
-    const nextData = await cache.tryGet(
-        link,
-        async () => {
-            const { page, destory } = await getPuppeteerPage(link, {
-                gotoConfig: { waitUntil: 'networkidle0' },
-            });
+    const html = await page.content();
+    await destory();
 
-            const html = await page.content();
-            await destory();
+    const $ = load(html);
+    const scriptContent = $('script#__NEXT_DATA__').text();
+    if (!scriptContent) {
+        throw new Error('Unable to find Next.js data');
+    }
 
-            const $ = load(html);
-            const scriptContent = $('script#__NEXT_DATA__').text();
-            if (!scriptContent) {
-                throw new Error('Unable to find Next.js data');
-            }
-            return JSON.parse(scriptContent);
-        },
-        config.cache.routeExpire,
-        false
-    );
+    const nextData = JSON.parse(scriptContent);
 
     const { content, metadata } = nextData.props.pageProps;
 
@@ -80,7 +71,7 @@ async function handler(ctx) {
                 allowedTags: ['br', 'p', 'strong', 'em'],
                 allowedAttributes: {},
             }),
-            category: article.section?.name || 'The Economist',
+            category: article.section?.name ? [article.section?.name] : [],
             guid: article.id || articleUrl,
         };
     });
@@ -89,7 +80,7 @@ async function handler(ctx) {
         title: String(metadata.title || content.headline || 'The Economist Topics'),
         link,
         description: metadata.description || content.description || `Latest articles about ${topic.replace('-', ' ')}`,
-        language: 'en-gb',
+        language: 'en-gb' as const,
         image: metadata.imageUrl || 'https://www.economist.com/engassets/google-search-logo.png',
         item: items,
     };
