@@ -3,6 +3,8 @@ import { unlockWebsite } from '@/utils/bright-data-unlocker';
 import { load } from 'cheerio';
 import cache from '@/utils/cache';
 import logger from '@/utils/logger';
+import { parseDate } from '@/utils/parse-date';
+import timezone from '@/utils/timezone';
 
 const handler = async (): Promise<Data> => {
     const baseUrl = 'https://nijijourney.com';
@@ -16,7 +18,7 @@ const handler = async (): Promise<Data> => {
 
                 const $ = load(html);
 
-                const items = $(String.raw`section a.border-nijiPrimary\/30`)
+                const itemList = $(String.raw`section a.border-nijiPrimary\/30`)
                     .toArray()
                     .map((element) => {
                         const $article = $(element);
@@ -42,19 +44,55 @@ const handler = async (): Promise<Data> => {
                     })
                     .filter((item) => item.title && item.link);
 
+                // Fetch article details to get publication dates
+                const items = await Promise.all(
+                    itemList.map((item) =>
+                        cache.tryGet(
+                            item.link,
+                            async () => {
+                                try {
+                                    const articleHtml = await unlockWebsite(item.link);
+                                    const $article = load(articleHtml);
+
+                                    // Find the date in the format "Jul 28, 2025"
+                                    const dateText = $article('section.max-w-prose p.text-sm.text-nijiBlack').first().text().trim();
+
+                                    let pubDate: Date | undefined;
+                                    if (dateText) {
+                                        pubDate = timezone(parseDate(dateText, 'MMM DD, YYYY', 'en'), 0);
+                                    }
+
+                                    // Extract article content from the second section.max-w-prose
+                                    const contentSection = $article('section.max-w-prose').eq(1);
+                                    const content = contentSection.html() || item.description;
+
+                                    return {
+                                        ...item,
+                                        description: content,
+                                        pubDate,
+                                    };
+                                } catch (error) {
+                                    logger.error(`Failed to fetch article ${item.link}:`, error);
+                                    return item;
+                                }
+                            },
+                            60 * 60 * 24 * 7
+                        )
+                    )
+                );
+
                 return {
                     title: 'niji・journey Blog',
                     link: targetUrl,
                     description: 'Latest updates and guides from niji・journey, the AI anime art generation platform',
                     item: items,
-                    image: 'https://nijijourney.com/public/assets/sizigi/banner.png',
                 };
             } catch (error) {
                 logger.error(`Failed to fetch ${targetUrl}:`, error);
                 throw new Error('Data source unavailable');
             }
         },
-        300,
+        3600,
         false
     );
 

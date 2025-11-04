@@ -60,14 +60,15 @@ export const route: Route = {
 
                 if (title && link) {
                     // Convert relative links to absolute
-                    const absoluteLink = link.startsWith('http') ? link : `https://bolt.new${link}`;
-
-                    articles.push({
-                        title,
-                        link: absoluteLink,
-                        description: description || title,
-                        category,
-                    });
+                    const absoluteLink = new URL(link, 'https://bolt.new').href;
+                    if (!articles.some((article) => article.link === absoluteLink)) {
+                        articles.push({
+                            title,
+                            link: absoluteLink,
+                            description: description || title,
+                            category,
+                        });
+                    }
                 }
             });
 

@@ -60,7 +60,7 @@ export const route: Route = {
 
                     articles.push({
                         title,
-                        link: href.startsWith('http') ? href : `${baseUrl}${href}`,
+                        link: new URL(href, baseUrl).href,
                         description: summary,
                         author,
                         pubDate,
@@ -93,7 +93,7 @@ export const route: Route = {
 
                         articles.push({
                             title,
-                            link: href.startsWith('http') ? href : `${baseUrl}${href}`,
+                            link: new URL(href, baseUrl).href,
                             description: summary,
                             author,
                             pubDate,
@@ -129,7 +129,7 @@ export const route: Route = {
 
                     articles.push({
                         title,
-                        link: href.startsWith('http') ? href : `${baseUrl}${href}`,
+                        link: new URL(href, baseUrl).href,
                         description: summary,
                         author,
                         pubDate,
