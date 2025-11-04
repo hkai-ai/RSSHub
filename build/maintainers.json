@@ -1163,6 +1163,9 @@
     "LogicJake",
     "HenryQW"
   ],
+  "/bolt/blog": [
+    "claude"
+  ],
   "/bookfere/:category": [
     "OdinZhang"
   ],
@@ -2192,6 +2195,9 @@
   ],
   "/diershoubing/news": [
     "wushijishan"
+  ],
+  "/dify/blog": [
+    "claude"
   ],
   "/digitalcameraworld/news": [
     "EthanWng97"
@@ -6214,6 +6220,9 @@
   "/openrice/:lang/hongkong/voting/top/:categoryKey": [
     "after9"
   ],
+  "/openrouter/announcements": [
+    "claude"
+  ],
   "/openwrt/releases/:brand/:model": [],
   "/orcid/:id": [
     "OrangeEd1t"
@@ -6907,6 +6916,9 @@
   "/remnote/changelog": [
     "TonyRL",
     "amakerlife"
+  ],
+  "/replit/blog": [
+    "claude"
   ],
   "/researchgate/publications/:id": [],
   "/resetera/thread/:id": [
@@ -8579,6 +8591,9 @@
   ],
   "/vcb-s/": [
     "cxfksword"
+  ],
+  "/vercel/blog/:category?": [
+    "claude"
   ],
   "/verfghbw/press/:keyword?": [
     "quinn-dev"

@@ -7994,6 +7994,19 @@
       }
     ]
   },
+  "bolt.new": {
+    "_name": "Bolt",
+    ".": [
+      {
+        "title": "Bolt Blog",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/blog"
+        ],
+        "target": "/bolt/bolt/blog"
+      }
+    ]
+  },
   "bookwalker.com.tw": {
     "_name": "BOOKWALKER電子書",
     "www": [
@@ -13756,6 +13769,19 @@
           "/"
         ],
         "target": "/diershoubing/news"
+      }
+    ]
+  },
+  "dify.ai": {
+    "_name": "Dify",
+    ".": [
+      {
+        "title": "Blog",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/blog"
+        ],
+        "target": "/dify/blog"
       }
     ]
   },
@@ -44017,6 +44043,20 @@
           "/"
         ],
         "target": "/vcb-s/"
+      }
+    ]
+  },
+  "vercel.com": {
+    "_name": "Vercel",
+    ".": [
+      {
+        "title": "Vercel Blog",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/blog",
+          "/blog/category/:category"
+        ],
+        "target": "/vercel/vercel/blog/:category"
       }
     ]
   },
