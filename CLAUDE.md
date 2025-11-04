@@ -1,10 +1,6 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
-RSSHub is an open-source RSS aggregation platform built with Node.js and TypeScript using the Hono framework. It converts various web sources into RSS feeds and serves as the world's largest RSS network with over 5,000 global instances.
+RSSHub is an RSS aggregation platform built with Node.js and TypeScript using the Hono framework. It converts various web sources into RSS feeds and serves as the world's largest RSS network with over 5,000 global instances.
 
 ## Development Commands
 
@@ -97,24 +93,16 @@ export type Category =
     | 'other';
 ```
 
-**Common category mappings**:
-- AI/Technology blogs: `['programming', 'new-media']`
-- News sites: `['traditional-media', 'new-media']`
-- Social media: `['social-media']`
-- Developer content: `['programming']`
-- Design content: `['design']`
-- Academic content: `['university', 'study']`
-
 ### Data Fetching Methods (Priority Order)
-1. **API** (preferred) - Use `ofetch` from `@/utils/ofetch` or `@/utils/got`
-2. **HTML scraping** - Use `cheerio` with `ofetch` or got
+1. **API** (preferred) - Use `ofetch` from `@/utils/ofetch`
+2. **HTML scraping** - Use `cheerio` with `ofetch`
 3. **Puppeteer** - Only for complex JS rendering or anti-bot scenarios
 
 ### Essential Utilities
 ```typescript
 import ofetch from '@/utils/ofetch';           // HTTP requests
-import { parseDate } from '@/utils/parse-date'; // Date parsing
-import cache from '@/utils/cache';             // Caching system
+import { parseDate } from '@/utils/parse-date'; // dayjs Date parsing
+import cache from '@/utils/cache';             // Caching system for article content
 import { load } from 'cheerio';                // HTML parsing
 import { art } from '@/utils/render';          // Template rendering
 ```
@@ -154,32 +142,6 @@ import { art } from '@/utils/render';          // Template rendering
    // Only import what you actually use
    ```
 
-2. **Regular expression patterns**: Prefer `.test()` for boolean operations
-   ```typescript
-   // ❌ Wrong: Using match() for boolean check
-   if (dateText.match(/^\d{2}\.\d{2}\.\d{2}$/)) {
-
-   // ✅ Correct: Use test() for boolean check
-   if (/^\d{2}\.\d{2}\.\d{2}$/.test(dateText)) {
-   ```
-
-3. **Array sorting**: Pre-commit hooks may reformat complex conditions
-   ```typescript
-   // ✅ Correct: Clear conditional formatting after auto-fix
-   items.sort((a, b) => {
-       if (!a.pubDate && !b.pubDate) {
-           return 0;
-       }
-       if (!a.pubDate) {
-           return 1;
-       }
-       if (!b.pubDate) {
-           return -1;
-       }
-       return b.pubDate.getTime() - a.pubDate.getTime();
-   });
-   ```
-
 **Development workflow**:
 1. Write code following RSSHub patterns
 2. Run `pnpm lint --fix` for auto-fixes
@@ -190,6 +152,9 @@ import { art } from '@/utils/render';          // Template rendering
 7. **Trust the auto-formatter**: Pre-commit hooks automatically format code correctly
 
 ### Caching Best Practices
+
+RSSHUB has added a default 5-minute cache to each route handler via middleware. Unless subject to crawler restrictions or using the Bright Data API, no additional caching is required for the entire route handler.
+
 ```typescript
 // Cache individual item details to avoid repeated requests
 const items = await Promise.all(
@@ -211,20 +176,6 @@ const items = await Promise.all(
 
 **Cache Warning**: Variables assigned outside `tryGet()` function won't be processed on cache hits
 
-#### RSS Route Caching Requirements
-- **MANDATORY for all RSS routes** - Every route MUST implement caching to avoid overwhelming target sites
-- **Recommended cache duration**: 300-3600 seconds (5 minutes to 1 hour) depending on content update frequency
-- **Always wrap main data fetching logic** in `cache.tryGet()` for the entire feed
-```typescript
-// Required pattern for all RSS routes
-return await cache.tryGet(currentUrl, async () => {
-    // All data fetching and processing logic here
-    return { title, link, description, item: items };
-}, 300, false); //do not refresh expiration time , default is true
-
-```
-- **Benefits**: Reduces server load, prevents rate limiting, improves response times, respects target site resources
-
 ## Route Registration
 
 Routes are automatically discovered and registered from `lib/routes/` - no manual registration needed. The system scans for exported `route` objects and `namespace` objects.
@@ -234,24 +185,6 @@ Routes are automatically discovered and registered from `lib/routes/` - no manua
 - Add `?format=debug.json` to any route URL for debug output(Using ctx.set('json', obj) and must running with debugInfo=true)
 - Check `logs/` directory for application logs
 
-
-## Data Fetching Priority
-
-### HTTP Client Selection
-1. **ofetch** (preferred) - Use `@/utils/ofetch` for most HTTP requests
-2. **got** - Use `@/utils/got` for complex proxy/scraping scenarios
-3. **Puppeteer** - Only for JavaScript rendering or complex anti-bot situations
-
-### User-Agent Configuration
-- **ALWAYS use `config.ua`** - Import from `@/config` and use as User-Agent header
-- **Never hardcode User-Agent strings** - Use the centralized configuration
-- **Priority**: `config.ua` > custom UA > default browser UA
-```typescript
-import { config } from '@/config';
-// For HTTP requests
-headers: { 'User-Agent': config.ua }
-// Puppeteer automatically uses config.ua
-```
 
 ### Error Handling Best Practices
 ```typescript
@@ -265,26 +198,20 @@ try {
 }
 ```
 
-### Testing Specific Routes
-```bash
-pnpm vitest routes/github          # Test github namespace
-pnpm vitest routes/github/issues   # Test specific route file
-pnpm vitest:watch                  # Watch mode for development
-```
-
 ### Date Handling Standards
 - Use `parseDate()` from `@/utils/parse-date` for date parsing
 - Use `parseRelativeDate()` for relative dates ("2 days ago")
 - Use `timezone()` from `@/utils/timezone` for timezone adjustments
 - **Never** add timestamps when websites don't provide them
 - Return `Date` objects, not strings
+- Ensure that each ambiguous date string (e.g., “October 30, 2025”) is parsed with a default time zone. If the time zone is unknown, use UTC 0 directly.
 
 #### Common Date Parsing Issues and Solutions
 
 **Problem**: `parseDate()` returns `Invalid Date` for ordinal dates
 - **Symptom**: Dates like "September 15th, 2025" fail to parse with `parseDate(cleanDate, 'MMMM D, YYYY')`
 - **Root Cause**: RSSHub's `parseDate()` utility may not handle all format strings correctly
-- **Solution**: Use JavaScript's native `Date` constructor as fallback
+- **Solution**: Use JavaScript's native `Date` constructor as fallback or use dayjs parameters for `parseDate()`
 ```typescript
 // ✅ Recommended pattern for ordinal dates
 const dateText = "September 15th, 2025";
@@ -309,20 +236,8 @@ try {
 
 ## Advanced Route Features
 
-### Template Rendering
-Place templates in `templates/` subfolder with `.art` extension:
-```typescript
-import { art } from '@/utils/render';
-import path from 'node:path';
-
-const renderContent = (data) => art(path.join(__dirname, 'templates/content.art'), data);
-```
-
 ### Anti-Crawler Handling
 ```typescript
-// Rate limiting protection
-await new Promise(resolve => setTimeout(resolve, 1000));
-
 // Random user agents
 import randUserAgent from '@/utils/rand-user-agent';
 const headers = { 'User-Agent': randUserAgent({ browser: 'chrome' }) };
@@ -426,7 +341,7 @@ try {
 | `description` | Item content | `undefined` | A, J, R |
 | `author` | Item author | `undefined` | A, J, R |
 | `pubDate` | Publication date (Date object) | `undefined` | A, J, R |
-| `category` | Categories (string or array) | `undefined` | A, J, R |
+| `category` | Categories (string array) | `undefined` | A, J, R |
 | `guid` | Unique identifier | `link \|\| title` | A, J, R |
 | `updated` | Last modification date | `undefined` | A, J |
 | `itunes_item_image` | Item image URL | `undefined` | R |
@@ -445,12 +360,10 @@ try {
 ## Important Notes
 
 - Always check existing routes in similar namespaces for patterns
-- Use the same HTTP client (`ofetch`) across all routes for consistency
 - Implement proper error handling and graceful degradation
 - Follow the established caching patterns to avoid rate limiting
 - Run `pnpm lint` after code changes to ensure compliance
 - Never commit changes without testing the route first
-- Use `ctx.set('data', obj)` to return RSS feed data
 - Format strings should avoid linebreaks in title/author fields
 - Convert intended linebreaks to `<br>` tags in `description` field
 - Trim whitespace from title/subtitle/author fields for RSS reader compatibility
@@ -665,19 +578,7 @@ Based on real project experience, here are key insights for successful RSSHub ro
 - [ ] Verify no ESLint errors remain
 - [ ] Test the route functionality
 
-### Key Success Factors
-1. **Namespace conflicts are easy to avoid** - use second-level domain names
-2. **ESLint compliance is non-negotiable** - remove unused code
-3. **Caching is mandatory** - respect target sites
-4. **Error handling is essential** - use try-catch and logger
-5. **Pre-commit hooks are helpful** - trust them to handle formatting
-6. **Follow established patterns** - don't reinvent the wheel
 
-### Common Pitfalls to Avoid
-- **Folder naming conflicts**: Always use second-level domain names
-- **Missing error handling**: Wrap all network requests in try-catch
-- **Inconsistent caching**: Implement at both feed and item levels
-- **ESLint violations**: Remove unused variables and parameters
-- **Hardcoded values**: Use centralized utilities and configurations
+
 
 The project's quality control systems (ESLint, pre-commit hooks, automated testing) ensure consistency and reliability across all routes.
