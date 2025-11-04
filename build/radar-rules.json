@@ -26834,6 +26834,19 @@
       }
     ]
   },
+  "lovable.dev": {
+    "_name": "Lovable",
+    ".": [
+      {
+        "title": "Blog",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/blog"
+        ],
+        "target": "/lovable/blog"
+      }
+    ]
+  },
   "lovart.ai": {
     "_name": "Lovart",
     ".": [
@@ -31891,6 +31904,19 @@
           "/"
         ],
         "target": "/nielsberglund/blog"
+      }
+    ]
+  },
+  "nijijourney.com": {
+    "_name": "niji・journey",
+    ".": [
+      {
+        "title": "Blog",
+        "docs": "https://docs.rsshub.app/routes/design",
+        "source": [
+          "/blog"
+        ],
+        "target": "/nijijourney/blog"
       }
     ]
   },

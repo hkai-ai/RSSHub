@@ -5078,6 +5078,7 @@
   "/lorientlejour/:category?": [
     "quiniapiezoelectricity"
   ],
+  "/lovable/blog": [],
   "/lovart/blog/:lang?": [
     "XruiDD"
   ],
@@ -5779,6 +5780,9 @@
   ],
   "/nifd/research/:categoryGuid?": [
     "Fatpandac"
+  ],
+  "/nijijourney/blog": [
+    "your-github-username"
   ],
   "/nikkei/index": [
     "zjysdhr"
