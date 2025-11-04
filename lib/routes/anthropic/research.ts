@@ -1,6 +1,6 @@
 import ofetch from '@/utils/ofetch';
 import { DataItem, Route } from '@/types';
-import { extractNextFlightObjects } from '@/utils/next-data';
+import { extractNextFlightObjects } from './next-data';
 
 export const route: Route = {
     path: '/research',

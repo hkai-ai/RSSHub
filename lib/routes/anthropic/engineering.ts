@@ -1,7 +1,7 @@
 import ofetch from '@/utils/ofetch';
 import { DataItem, Route } from '@/types';
 import { parseDate } from '@/utils/parse-date';
-import { extractNextFlightObjects } from '@/utils/next-data';
+import { extractNextFlightObjects } from './next-data';
 import timezone from '@/utils/timezone';
 
 export const route: Route = {
