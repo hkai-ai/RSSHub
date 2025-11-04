@@ -2,6 +2,7 @@ import { Route } from '@/types';
 import ofetch from '@/utils/ofetch';
 import { load } from 'cheerio';
 import { parseDate } from '@/utils/parse-date';
+import timezone from '@/utils/timezone';
 
 export const route: Route = {
     path: '/news/top',
@@ -45,11 +46,11 @@ async function handler() {
             const link = titleElement.attr('href');
 
             // 提取時間
-            let pubDate = null;
+            let pubDate: Date | undefined;
             const timeScript = $element.find('script').text();
             const dateMatch = timeScript.match(/dt:'([^']+)'/);
             if (dateMatch) {
-                pubDate = parseDate(dateMatch[1], 'YYYY/MM/DD HH:mm');
+                pubDate = timezone(parseDate(dateMatch[1], 'YYYY/MM/DD HH:mm'), 8);
             }
 
             // 提取摘要
