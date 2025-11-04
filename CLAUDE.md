@@ -58,7 +58,7 @@ export const route: Route = {
     parameters: { /* param descriptions */ },
     features: { /* capabilities flags */ },
     radar: [{ /* RSSHub Radar rules */ }],
-    maintainers: ['github-username'],
+    maintainers: ['claude'],
     handler: async (ctx) => { /* implementation */ }
 };
 ```
@@ -260,7 +260,7 @@ export const route: Route = {
     path: '/example/:param',
     name: 'Example Route',
     categories: ['programming'],
-    maintainers: ['username'],
+    maintainers: ['claude'],
     features: {
         requireConfig: [
             {
