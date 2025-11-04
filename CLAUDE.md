@@ -57,11 +57,52 @@ export const route: Route = {
     example: '/github/issues/DIYgod/RSSHub', // Working example URL
     parameters: { /* param descriptions */ },
     features: { /* capabilities flags */ },
-    radar: [{ /* RSSHub Radar rules */ }],
+    radar: [{ /* RSSHub Radar rules */ }], //required
     maintainers: ['claude'],
     handler: async (ctx) => { /* implementation */ }
 };
 ```
+
+radar:
+```
+export type RadarItem = {
+    /**
+     * The overwriting title of the radar rule
+     */
+    title?: string;
+
+    /**
+     * The URL path to the corresponding documentation
+     */
+    docs?: string;
+
+    /**
+     * The source URL path of the radar rule
+     * @see https://docs.rsshub.app/joinus/new-radar#source
+     */
+    source: string[];
+
+    /**
+     * The target RSSHub subscription URL path of the radar rule
+     *
+     * Will use RouteItem.path if not specified
+     * @see https://docs.rsshub.app/joinus/new-radar#target
+     *
+     * Using `target` as a function is deprecated in RSSHub-Radar 2.0.19
+     */
+    target?:
+        | string
+        | ((
+              /** The parameters matched from the `source` field */
+              params: any,
+              /** The current webpage URL string */
+              url: string,
+              /** @deprecated Temporary removed  @see https://github.com/DIYgod/RSSHub-Radar/commit/e6079ea1a8c96e89b1b2c2aa6d13c7967788ca3b */
+              document: Document
+          ) => string);
+};
+```
+
 
 ### Standard RSSHub Categories
 **IMPORTANT**: The `categories` field MUST only use values from the official Category type:
