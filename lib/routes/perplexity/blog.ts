@@ -131,7 +131,7 @@ export const route: Route = {
                     item: items,
                 };
             },
-            3600 * 2,
+            3600,
             false
         );
 
