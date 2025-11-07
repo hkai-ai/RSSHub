@@ -1,7 +1,7 @@
-import { Route } from '@/types';
+import { DataItem, Route } from '@/types';
 import { load } from 'cheerio';
 import got from '@/utils/got';
-import { parseDate } from '@/utils/parse-date';
+import timezone from '@/utils/timezone';
 
 export const route: Route = {
     path: '/blog/:category?',
@@ -36,44 +36,37 @@ async function handler(ctx) {
     const $ = load(response.data);
 
     // Extract the big featured news item
-    const featuredArticles = [];
-    const featuredItem = $('a.w-full.rss.big-news-wrapper');
-    if (featuredItem.length > 0) {
-        const title = featuredItem.find('div[style*="font-size:2.5rem"]').first().text().trim();
-        const link = `${baseUrl}${featuredItem.attr('href')}`;
+    const featuredArticles: DataItem[] = [];
+    const featuredItem = $('a > .group').parent();
+    if (featuredItem.length > 0 && featuredItem.attr('href')) {
+        const title = featuredItem.find('h2').first().text().trim();
+        const link = new URL(featuredItem.attr('href')!, url).toString();
 
         // Extract category/tag (first 1.5rem element)
-        const categoryText = featuredItem.find('div[style*="font-size:1.5rem"]').first().text().trim();
+        const categoryText = featuredItem.find('div.rounded-full[class*="bg-"]').first().text().trim();
 
         // Extract description - look for the specific description class first
-        let description = featuredItem.find('div.desc').text().trim();
-
-        // If no description found with class, try the fallback method
-        if (!description) {
-            const descElements = featuredItem.find('div[style*="font-size:1.5rem"]');
-            descElements.each((index, element) => {
-                const text = $(element).text().trim();
-                if (text !== categoryText && text.length > 20) {
-                    description = text;
-                    return false; // Break the loop
-                }
-            });
-        }
+        const description = featuredItem.find('p').text().trim();
 
         const image = featuredItem.find('img').attr('src');
 
-        // Extract author and date from the user section
-        const userSection = featuredItem.find('.rsc');
-        const authorName = userSection.find('div[style*="font-size:1.25rem"]').first().text().trim();
-        const dateText = userSection.find('div[style*="font-size:1.25rem"]').last().text().replace('・', '').trim();
-
+        let dateStr = '';
+        featuredItem.find('span').each((_, el) => {
+            const m = $(el)
+                .text()
+                .match(/^\s*·\s*(\d{4}\/\d{2}\/\d{2})\s*$/);
+            if (m) {
+                // m[1] 就是 2025/09/26
+                dateStr = m[1];
+                return false; // 找到一个就停止
+            }
+        });
         if (title && link) {
             featuredArticles.push({
                 title,
                 link,
                 description: description || title,
-                pubDate: parseDate(dateText),
-                author: authorName,
+                pubDate: timezone(new Date(dateStr), 0),
                 category: [categoryText].filter(Boolean),
                 image: image?.startsWith('http') ? image : image ? `${baseUrl}${image}` : undefined,
             });
@@ -81,49 +74,33 @@ async function handler(ctx) {
     }
 
     // Extract regular articles from the grid
-    const articles = $('a.css.news-item')
+    const articles = $('a[href]:not([href=""])[class~="group"]')
         .toArray()
         .map((ele) => {
             const item = $(ele);
 
-            const title = item.find('div[style*="font-size:1.375rem"]').text().trim();
-            const link = `${baseUrl}${item.attr('href')}`;
+            const title = item.find('span.text-4').first().text().trim();
+            const link = new URL(item.attr('href')!, url).toString();
 
             // Find description - it's usually in a div that's not part of the user section
-            const descriptionElements = item.find('div[style*="font-size:1.25rem"]');
-            let description = '';
-            descriptionElements.each((index, element) => {
-                const text = $(element).text().trim();
-                const parent = $(element).parent();
-                // Skip if it's in the user section (.rsc) or if it looks like a date/author
-                if (!parent.hasClass('rsc') && !parent.closest('.rsc').length && !text.includes('・') && !/^\d{4}\/\d{2}\/\d{2}$/.test(text) && text.length > 20) {
-                    // Description should be longer than author names
-                    description = text;
-                    return false; // Break the loop
-                }
-            });
+            const description = item.find('p').first().text().trim();
+
             const image = item.find('img').attr('src');
 
             // Extract tag/category
-            const tagText = item.find('.ccc.tag div').text().trim();
+            const tagText = featuredItem.find('span.rounded-full').first().text().trim();
 
-            // Extract author and date
-            const userSection = item.find('.rsc').last();
-            const authorElements = userSection.find('div[style*="font-size:1.25rem"]');
-
-            // Handle multiple authors - collect all author names before the date
-            const authors = [];
-            authorElements.each((index, element) => {
-                const text = $(element).text().trim();
-                // Skip if it contains date format (・YYYY/MM/DD)
-                if (!text.includes('・') && text && !/^\d{4}\/\d{2}\/\d{2}$/.test(text)) {
-                    authors.push(text);
+            let dateStr = '';
+            item.find('span').each((_, el) => {
+                const m = $(el)
+                    .text()
+                    .match(/^\s*·\s*(\d{4}\/\d{2}\/\d{2})\s*$/);
+                if (m) {
+                    // m[1] 就是 2025/09/26
+                    dateStr = m[1];
+                    return false; // 找到一个就停止
                 }
             });
-
-            // Get the date (last element with ・ or date format)
-            const dateText = authorElements.last().text().replace('・', '').trim();
-
             if (!title || !link) {
                 return null;
             }
@@ -132,16 +109,24 @@ async function handler(ctx) {
                 title,
                 link,
                 description: description || title,
-                pubDate: parseDate(dateText),
-                author: authors.join(', ') || undefined,
+                pubDate: timezone(new Date(dateStr), 0),
                 category: [tagText].filter(Boolean),
                 image: image?.startsWith('http') ? image : image ? `${baseUrl}${image}` : undefined,
             };
         })
         .filter(Boolean);
 
+    const map = new Map<string, DataItem>();
+    for (const a of [...featuredArticles, ...articles]) {
+        if (a !== null) {
+            map.set(a.link!, a);
+        }
+    }
     // Combine featured and regular articles
-    const allArticles = [...featuredArticles, ...articles];
+    const allArticles = map
+        .entries()
+        .toArray()
+        .map((e) => e[1]);
 
     // Filter by category if specified
     const filteredArticles = category ? allArticles.filter((article) => article.category?.some((cat) => cat.toLowerCase().includes(category.toLowerCase()))) : allArticles;
