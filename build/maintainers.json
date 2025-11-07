@@ -4179,6 +4179,9 @@
     "zphw",
     "nczitzk"
   ],
+  "/ideogram/blog": [
+    "claude"
+  ],
   "/idolmaster/news/:routeParams?": [
     "keocheung"
   ],

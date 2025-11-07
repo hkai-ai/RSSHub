@@ -22525,6 +22525,20 @@
       }
     ]
   },
+  "ideogram.ai": {
+    "_name": "Ideogram",
+    ".": [
+      {
+        "title": "Blog",
+        "docs": "https://docs.rsshub.app/routes/design",
+        "source": [
+          "/blog",
+          "/blog/*"
+        ],
+        "target": "/ideogram/blog"
+      }
+    ]
+  },
   "idolmaster-official.jp": {
     "_name": "アイドルマスター THE IDOLM@STER",
     ".": [
