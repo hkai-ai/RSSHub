@@ -30138,6 +30138,16 @@
   },
   "minimaxi.com": {
     "_name": "MiniMax",
+    "www": [
+      {
+        "title": "MiniMax 模型发布",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/release-notes/models"
+        ],
+        "target": "/minimaxi/models"
+      }
+    ],
     ".": [
       {
         "title": "新闻动态",
