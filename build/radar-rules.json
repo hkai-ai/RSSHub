@@ -37312,6 +37312,19 @@
       }
     ]
   },
+  "replit.com": {
+    "_name": "Replit",
+    "docs": [
+      {
+        "title": "Replit Changelog",
+        "docs": "https://docs.rsshub.app/routes/programming",
+        "source": [
+          "/updates"
+        ],
+        "target": "/replit/replit/changelog"
+      }
+    ]
+  },
   "researchgate.net": {
     "_name": "ResearchGate",
     ".": [

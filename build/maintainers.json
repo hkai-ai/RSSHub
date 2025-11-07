@@ -6920,6 +6920,9 @@
   "/replit/blog": [
     "claude"
   ],
+  "/replit/changelog": [
+    "claude"
+  ],
   "/researchgate/publications/:id": [],
   "/resetera/thread/:id": [
     "ZEN-GUO"
