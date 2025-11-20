@@ -92,7 +92,7 @@ export const route: Route = {
                 }
 
                 // 构建文章链接 - 使用ID构建详情页URL
-                const link = `https://www.delilegal.com/news/detail?id=${item.id}`;
+                const link = `https://www.delilegal.com/news/${apiType}/${item.id}`;
 
                 return {
                     title: item.title,
