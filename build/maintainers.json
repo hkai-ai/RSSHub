@@ -2172,6 +2172,9 @@
   "/dehenglaw/:language?/:category?": [
     "nczitzk"
   ],
+  "/delilegal/news/:category?/:value?": [
+    "claude"
+  ],
   "/deltaio/blog": [
     "RengarLee"
   ],
@@ -2671,6 +2674,9 @@
   "/eshukan/academic/:id?": [
     "nczitzk"
   ],
+  "/esign/product-updates": [
+    "claude"
+  ],
   "/espn/news/:sport": [
     "weijianduan0302"
   ],
@@ -2707,6 +2713,12 @@
   ],
   "/f-droid/apprelease/:app": [
     "garywill"
+  ],
+  "/fadada/news": [
+    "claude"
+  ],
+  "/fadada/product-updates": [
+    "claude"
   ],
   "/famitsu/category/:category?": [
     "TonyRL"
@@ -6800,6 +6812,9 @@
     "nczitzk"
   ],
   "/qiyoujiage/:path{.+}": [],
+  "/qiyuesuo/blog": [
+    "claude"
+  ],
   "/qlu/notice": [
     "SunBK201"
   ],

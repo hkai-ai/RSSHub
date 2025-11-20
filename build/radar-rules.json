@@ -13979,6 +13979,35 @@
       }
     ]
   },
+  "delilegal.com": {
+    "_name": "得理",
+    ".": [
+      {
+        "title": "得理新闻资讯",
+        "docs": "https://docs.rsshub.app/routes/finance",
+        "source": [
+          "/news"
+        ],
+        "target": "/delilegal/delilegal/news"
+      },
+      {
+        "title": "得理新闻资讯",
+        "docs": "https://docs.rsshub.app/routes/finance",
+        "source": [
+          "/news/company"
+        ],
+        "target": "/delilegal/delilegal/news/company"
+      },
+      {
+        "title": "得理新闻资讯",
+        "docs": "https://docs.rsshub.app/routes/finance",
+        "source": [
+          "/news/laws"
+        ],
+        "target": "/delilegal/delilegal/news/laws"
+      }
+    ]
+  },
   "delta.io": {
     "_name": "Delta Lake",
     ".": [
@@ -15435,6 +15464,19 @@
       }
     ]
   },
+  "esign.cn": {
+    "_name": "e签宝",
+    "help": [
+      {
+        "title": "产品常规公告",
+        "docs": "https://docs.rsshub.app/routes/program-update",
+        "source": [
+          "/detail?id=uc2xdk&nameSpace=cs3-dept%2Fza62ha"
+        ],
+        "target": "/esign/esign/product-updates"
+      }
+    ]
+  },
   "espn.com": {
     "_name": "ESPN",
     ".": [
@@ -15673,6 +15715,29 @@
           "/en/packages/:app/"
         ],
         "target": "/f-droid/apprelease/:app"
+      }
+    ]
+  },
+  "fadada.com": {
+    "_name": "法大大",
+    ".": [
+      {
+        "title": "法大大新闻资讯",
+        "docs": "https://docs.rsshub.app/routes/new-media",
+        "source": [
+          "/news"
+        ],
+        "target": "/fadada/fadada/news"
+      }
+    ],
+    "support": [
+      {
+        "title": "法大大产品更新动态",
+        "docs": "https://docs.rsshub.app/routes/program-update",
+        "source": [
+          "/d/1638785527073222657.html"
+        ],
+        "target": "/fadada/fadada/product-updates"
       }
     ]
   },
