@@ -1,8 +1,9 @@
+import type { DataItem, Route } from '@/types';
 import ofetch from '@/utils/ofetch';
-import { DataItem, Route } from '@/types';
 import { parseDate } from '@/utils/parse-date';
-import { extractNextFlightObjects } from './next-data';
 import timezone from '@/utils/timezone';
+
+import { extractNextFlightObjects } from './next-data';
 
 export const route: Route = {
     path: '/engineering',

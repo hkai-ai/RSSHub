@@ -1,8 +1,9 @@
-import { Route } from '@/types';
-import { parseDate } from '@/utils/parse-date';
+import { parse } from 'yaml';
+
+import type { Route } from '@/types';
 import logger from '@/utils/logger';
 import ofetch from '@/utils/ofetch';
-import { parse } from 'yaml';
+import { parseDate } from '@/utils/parse-date';
 
 export const route: Route = {
     path: '/cookbook',
