@@ -33,4 +33,4 @@ jobs:
 
           # 启动服务
           cd /home/lighthouse/docker-apps/rsshub-compose
-          sudo docker-compose up -d
+          sudo docker compose up -d
