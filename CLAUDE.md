@@ -24,15 +24,17 @@ pnpm build:docs          # Build documentation
 ## Architecture Overview
 
 ### Core Structure
+
 - **`lib/`** - Main application code
-  - **`routes/`** - RSS route implementations organized by namespace (e.g., `github/`, `twitter/`)
-  - **`middleware/`** - Request processing middleware (auth, cache, rate limiting)
-  - **`utils/`** - Shared utilities (ofetch, cache, date parsing, templating)
-  - **`config.ts`** - Configuration management with environment variables
-  - **`types.ts`** - TypeScript type definitions for Route, Namespace, etc.
-  - **`registry.ts`** - Dynamic route registration system
+    - **`routes/`** - RSS route implementations organized by namespace (e.g., `github/`, `twitter/`)
+    - **`middleware/`** - Request processing middleware (auth, cache, rate limiting)
+    - **`utils/`** - Shared utilities (ofetch, cache, date parsing, templating)
+    - **`config.ts`** - Configuration management with environment variables
+    - **`types.ts`** - TypeScript type definitions for Route, Namespace, etc.
+    - **`registry.ts`** - Dynamic route registration system
 
 ### Key Technologies
+
 - **Hono** - Web framework for routing and middleware
 - **ofetch** - HTTP client (preferred over got/axios)
 - **cheerio** - Server-side jQuery for HTML parsing
@@ -43,27 +45,40 @@ pnpm build:docs          # Build documentation
 ## Route Development Patterns
 
 ### Creating New Routes
+
 1. **Namespace**: Create folder under `lib/routes/[domain]/` using the website's second-level domain
 2. **namespace.ts**: Define namespace metadata (name, url, description)
 3. **[route].ts**: Implement route with handler function
 4. **Templates** (optional): Place `.art` templates in `templates/` subfolder
 
 ### Route Object Structure
+
 ```typescript
 export const route: Route = {
-    path: '/path/:param/:optional?',        // Hono routing syntax
-    name: 'Human Readable Name',            // Different from namespace name
-    categories: ['programming'],            // **Must use standard RSSHub categories only**
+    path: '/path/:param/:optional?', // Hono routing syntax
+    name: 'Human Readable Name', // Different from namespace name
+    categories: ['programming'], // **Must use standard RSSHub categories only**
     example: '/github/issues/DIYgod/RSSHub', // Working example URL
-    parameters: { /* param descriptions */ },
-    features: { /* capabilities flags */ },
-    radar: [{ /* RSSHub Radar rules */ }], //required
+    parameters: {
+        /* param descriptions */
+    },
+    features: {
+        /* capabilities flags */
+    },
+    radar: [
+        {
+            /* RSSHub Radar rules */
+        },
+    ], //required
     maintainers: ['claude'],
-    handler: async (ctx) => { /* implementation */ }
+    handler: async (ctx) => {
+        /* implementation */
+    },
 };
 ```
 
 radar:
+
 ```
 export type RadarItem = {
     /**
@@ -103,9 +118,10 @@ export type RadarItem = {
 };
 ```
 
-
 ### Standard RSSHub Categories
+
 **IMPORTANT**: The `categories` field MUST only use values from the official Category type:
+
 ```typescript
 export type Category =
     | 'popular'
@@ -135,28 +151,32 @@ export type Category =
 ```
 
 ### Data Fetching Methods (Priority Order)
+
 1. **API** (preferred) - Use `ofetch` from `@/utils/ofetch`
 2. **HTML scraping** - Use `cheerio` with `ofetch`
 3. **Puppeteer** - Only for complex JS rendering or anti-bot scenarios
 
 ### Essential Utilities
+
 ```typescript
-import ofetch from '@/utils/ofetch';           // HTTP requests
+import ofetch from '@/utils/ofetch'; // HTTP requests
 import { parseDate } from '@/utils/parse-date'; // dayjs Date parsing
-import cache from '@/utils/cache';             // Caching system for article content
-import { load } from 'cheerio';                // HTML parsing
-import { art } from '@/utils/render';          // Template rendering
+import cache from '@/utils/cache'; // Caching system for article content
+import { load } from 'cheerio'; // HTML parsing
+import { art } from '@/utils/render'; // Template rendering
 ```
 
 ## Code Standards
 
 ### File Conventions
+
 - **Naming**: Use `kebab-case` for files/folders
 - **Indentation**: 4 spaces (except YAML: 2 spaces)
 - **Line endings**: LF (Unix style)
 - **Encoding**: UTF-8 with final newline
 
 ### TypeScript/ESLint Rules
+
 - Use `const`/`let` instead of `var`
 - Prefer arrow functions over `function` keyword
 - No `console.log` (use logger from `@/utils/logger`)
@@ -172,18 +192,21 @@ import { art } from '@/utils/render';          // Template rendering
 - **Conditional formatting**: Use consistent formatting for multi-line conditionals
 
 #### ESLint Debugging and Auto-Fix Process
+
 **Common ESLint Issues and Solutions**:
 
 1. **Unused imports/variables**: ESLint will fail commit hooks
-   ```typescript
-   // ❌ Wrong: Imported but never used
-   import { parseDate } from '@/utils/parse-date';
 
-   // ✅ Correct: Remove unused imports
-   // Only import what you actually use
-   ```
+    ```typescript
+    // ❌ Wrong: Imported but never used
+    import { parseDate } from '@/utils/parse-date';
+
+    // ✅ Correct: Remove unused imports
+    // Only import what you actually use
+    ```
 
 **Development workflow**:
+
 1. Write code following RSSHub patterns
 2. Run `pnpm lint --fix` for auto-fixes
 3. Check remaining ESLint warnings/errors
@@ -210,6 +233,7 @@ const items = await Promise.all(
 ```
 
 #### Cache API Reference
+
 - **`cache.tryGet(key, getValueFunc [, maxAge [, refresh]])`** - Primary cache method
 - **`cache.get(key [, refresh])`** - Get cached value (requires `JSON.parse()`)
 - **`cache.set(key, value [, maxAge])`** - Set cache value
@@ -222,12 +246,13 @@ const items = await Promise.all(
 Routes are automatically discovered and registered from `lib/routes/` - no manual registration needed. The system scans for exported `route` objects and `namespace` objects.
 
 ## Common Debugging
+
 - Monitor console output during `pnpm dev` for errors
 - Add `?format=debug.json` to any route URL for debug output(Using ctx.set('json', obj) and must running with debugInfo=true)
 - Check `logs/` directory for application logs
 
-
 ### Error Handling Best Practices
+
 ```typescript
 // Graceful error handling with fallbacks
 try {
@@ -240,6 +265,7 @@ try {
 ```
 
 ### Date Handling Standards
+
 - Use `parseDate()` from `@/utils/parse-date` for date parsing
 - Use `parseRelativeDate()` for relative dates ("2 days ago")
 - Use `timezone()` from `@/utils/timezone` for timezone adjustments
@@ -250,12 +276,14 @@ try {
 #### Common Date Parsing Issues and Solutions
 
 **Problem**: `parseDate()` returns `Invalid Date` for ordinal dates
+
 - **Symptom**: Dates like "September 15th, 2025" fail to parse with `parseDate(cleanDate, 'MMMM D, YYYY')`
 - **Root Cause**: RSSHub's `parseDate()` utility may not handle all format strings correctly
 - **Solution**: Use JavaScript's native `Date` constructor as fallback or use dayjs parameters for `parseDate()`
+
 ```typescript
 // ✅ Recommended pattern for ordinal dates
-const dateText = "September 15th, 2025";
+const dateText = 'September 15th, 2025';
 try {
     const cleanDate = dateText.replace(/(\d+)(st|nd|rd|th)/, '$1'); // "September 15, 2025"
     const pubDate = new Date(cleanDate); // Native JS Date handles this format well
@@ -270,6 +298,7 @@ try {
 ```
 
 **Key Lessons**:
+
 - Always validate parsed dates with `isNaN(date.getTime())`
 - JavaScript's `Date` constructor is more flexible than custom format strings
 - Clean ordinal suffixes (st/nd/rd/th) before parsing
@@ -278,6 +307,7 @@ try {
 ## Advanced Route Features
 
 ### Anti-Crawler Handling
+
 ```typescript
 // Random user agents
 import randUserAgent from '@/utils/rand-user-agent';
@@ -295,7 +325,9 @@ const response = await unlockWebsiteAsJSON('https://example.com', { country: 'us
 ```
 
 ### Route Configuration for Bright Data Unlocker
+
 When using Bright Data Unlocker in routes, configure required environment variables:
+
 ```typescript
 export const route: Route = {
     path: '/example/:param',
@@ -306,30 +338,31 @@ export const route: Route = {
         requireConfig: [
             {
                 name: 'BRIGHTDATA_API_KEY',
-                description: 'Bright Data API key for bypassing anti-bot measures'
+                description: 'Bright Data API key for bypassing anti-bot measures',
             },
             {
                 name: 'BRIGHTDATA_UNLOCKER_ZONE',
-                description: 'Bright Data zone identifier for web unlocker'
-            }
-        ]
+                description: 'Bright Data zone identifier for web unlocker',
+            },
+        ],
     },
     handler: async (ctx) => {
         // Use Bright Data Unlocker in handler
         const html = await unlockWebsite(targetUrl);
         // Process HTML content...
-    }
+    },
 };
 ```
 
 ### Puppeteer Best Practices
+
 ```typescript
 // Use getPuppeteerPage helper for simplified puppeteer usage
 const { page, destory } = await getPuppeteerPage(url, {
     gotoConfig: {
         waitUntil: 'networkidle2',
         timeout: 30000,
-    }
+    },
 });
 
 try {
@@ -341,7 +374,6 @@ try {
     const $ = load(html);
 
     // Process content...
-
 } finally {
     // Always clean up resources
     await destory();
@@ -349,54 +381,165 @@ try {
 ```
 
 **Important Notes:**
+
 - Always use `getPuppeteerPage()` instead of manual puppeteer setup
 - The helper automatically handles browser creation, page setup, and cleanup
 - Use `destory()` in the finally block to clean up resources
 - Always wrap in try-finally to ensure proper cleanup
 - Use `page.content()` instead of `page.evaluate(() => document.documentElement.outerHTML)`
 
+#### API Response Interception with Puppeteer
+
+When intercepting API requests in Puppeteer, follow these critical patterns:
+
+**✅ Correct Pattern - Use onBeforeLoad with Promise:**
+
+```typescript
+let apiData: any = null;
+let resolveApiData: (value: any) => void;
+
+// Create a Promise to wait for API data
+const apiDataPromise = new Promise<any>((resolve) => {
+    resolveApiData = resolve;
+});
+
+const { page, destory } = await getPuppeteerPage(url, {
+    onBeforeLoad: (page) => {
+        // Set up response interceptor BEFORE page loads
+        page.on('response', async (response) => {
+            const requestUrl = response.url();
+
+            if (requestUrl.startsWith('https://api.example.com/') && !apiData) {
+                try {
+                    const contentType = response.headers()['content-type'] || '';
+                    if (contentType.includes('application/json')) {
+                        const data = await response.json();
+                        apiData = data;
+                        resolveApiData(data); // Resolve promise when data arrives
+                    }
+                } catch (error) {
+                    logger.debug(`Failed to parse response:`, error);
+                }
+            }
+        });
+    },
+});
+
+try {
+    // Wait for API data with timeout
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout waiting for API data')), 10000);
+    });
+
+    await Promise.race([apiDataPromise, timeoutPromise]);
+
+    if (!apiData) {
+        throw new Error('Failed to intercept API data');
+    }
+
+    // Process apiData...
+} finally {
+    await destory();
+}
+```
+
+**❌ Wrong Patterns - Common Mistakes:**
+
+1. **Don't set up interceptor after page load:**
+
+```typescript
+// ❌ Wrong: Interceptor set up too late
+const { page, destory } = await getPuppeteerPage(url);
+page.on('response', async (response) => {
+    /* ... */
+}); // Too late!
+```
+
+2. **Don't use deprecated waitForTimeout:**
+
+```typescript
+// ❌ Wrong: page.waitForTimeout is deprecated
+await page.waitForTimeout(5000);
+
+// ✅ Correct: Use Promise-based waiting
+await new Promise((resolve) => setTimeout(resolve, 5000));
+```
+
+3. **Don't use polling loops when you can use Promises:**
+
+```typescript
+// ❌ Wrong: Inefficient polling
+while (!apiData && Date.now() - startTime < maxWaitTime) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+}
+
+// ✅ Correct: Promise-based waiting (shown above)
+```
+
+4. **Don't use networkidle2 when intercepting API calls:**
+
+```typescript
+// ❌ Wrong: Unnecessary waiting
+gotoConfig: {
+    waitUntil: 'networkidle2',  // Not needed when using response interception
+}
+
+// ✅ Correct: Let the interceptor handle timing
+// Don't specify gotoConfig, or use 'domcontentloaded' if needed
+```
+
+**Key Lessons:**
+
+- **Always** set up response interceptors in `onBeforeLoad` callback
+- **Always** use Promise-based waiting with timeout for intercepted data
+- **Never** use `page.waitForTimeout()` (deprecated)
+- **Never** guess API response structure - request actual samples first
+- **Always** prefer precise timestamps over formatted date strings when available
+
 ## RSS Feed Format Support
 
 ### Channel Level Fields
-| Field | Description | Default | Compatibility |
-|-------|-------------|---------|---------------|
-| `title` | Feed name (plain text) | `RSSHub` | A, J, R |
-| `link` | Website URL | `https://rsshub.app` | A, J, R |
-| `description` | Feed summary (plain text) | Defaults to `title` | J, R |
-| `language` | Primary language (ISO 639) | `zh-cn` | J, R |
-| `image` | Channel image URL | `undefined` | J, R |
-| `icon` | Atom feed icon | `undefined` | J |
-| `logo` | RSS feed logo | `undefined` | J |
-| `subtitle` | Atom feed subtitle | `undefined` | A |
-| `author` | Feed author | `RSSHub` | A, J |
-| `itunes_author` | Podcast author | `undefined` | R |
-| `itunes_category` | Podcast category | `undefined` | R |
-| `itunes_explicit` | Explicit content indicator | `undefined` | R |
-| `allowEmpty` | Allow empty feeds | `undefined` | A, J, R |
+
+| Field             | Description                | Default              | Compatibility |
+| ----------------- | -------------------------- | -------------------- | ------------- |
+| `title`           | Feed name (plain text)     | `RSSHub`             | A, J, R       |
+| `link`            | Website URL                | `https://rsshub.app` | A, J, R       |
+| `description`     | Feed summary (plain text)  | Defaults to `title`  | J, R          |
+| `language`        | Primary language (ISO 639) | `zh-cn`              | J, R          |
+| `image`           | Channel image URL          | `undefined`          | J, R          |
+| `icon`            | Atom feed icon             | `undefined`          | J             |
+| `logo`            | RSS feed logo              | `undefined`          | J             |
+| `subtitle`        | Atom feed subtitle         | `undefined`          | A             |
+| `author`          | Feed author                | `RSSHub`             | A, J          |
+| `itunes_author`   | Podcast author             | `undefined`          | R             |
+| `itunes_category` | Podcast category           | `undefined`          | R             |
+| `itunes_explicit` | Explicit content indicator | `undefined`          | R             |
+| `allowEmpty`      | Allow empty feeds          | `undefined`          | A, J, R       |
 
 ### Item Level Fields
-| Field | Description | Default | Compatibility |
-|-------|-------------|---------|---------------|
-| `title` | Item title (required) | `undefined` | A, J, R |
-| `link` | Item URL | `undefined` | A, J, R |
-| `description` | Item content | `undefined` | A, J, R |
-| `author` | Item author | `undefined` | A, J, R |
-| `pubDate` | Publication date (Date object) | `undefined` | A, J, R |
-| `category` | Categories (string array) | `undefined` | A, J, R |
-| `guid` | Unique identifier | `link \|\| title` | A, J, R |
-| `updated` | Last modification date | `undefined` | A, J |
-| `itunes_item_image` | Item image URL | `undefined` | R |
-| `itunes_duration` | Audio/video length (seconds or H:mm:ss) | `undefined` | J, R |
-| `enclosure_url` | Enclosure file URL | `undefined` | J, R |
-| `enclosure_length` | Enclosure size in bytes | `undefined` | J, R |
-| `enclosure_type` | Enclosure MIME type | `undefined` | J, R |
-| `upvotes` | Number of upvotes | `undefined` | A |
-| `downvotes` | Number of downvotes | `undefined` | A |
-| `comments` | Number of comments | `undefined` | A |
-| `media.*` | Media RSS fields | `undefined` | R |
-| `doi` | Digital Object Identifier | `undefined` | R |
 
-*Compatibility: A=Atom, J=JSON Feed, R=RSS 2.0*
+| Field               | Description                             | Default           | Compatibility |
+| ------------------- | --------------------------------------- | ----------------- | ------------- |
+| `title`             | Item title (required)                   | `undefined`       | A, J, R       |
+| `link`              | Item URL                                | `undefined`       | A, J, R       |
+| `description`       | Item content                            | `undefined`       | A, J, R       |
+| `author`            | Item author                             | `undefined`       | A, J, R       |
+| `pubDate`           | Publication date (Date object)          | `undefined`       | A, J, R       |
+| `category`          | Categories (string array)               | `undefined`       | A, J, R       |
+| `guid`              | Unique identifier                       | `link \|\| title` | A, J, R       |
+| `updated`           | Last modification date                  | `undefined`       | A, J          |
+| `itunes_item_image` | Item image URL                          | `undefined`       | R             |
+| `itunes_duration`   | Audio/video length (seconds or H:mm:ss) | `undefined`       | J, R          |
+| `enclosure_url`     | Enclosure file URL                      | `undefined`       | J, R          |
+| `enclosure_length`  | Enclosure size in bytes                 | `undefined`       | J, R          |
+| `enclosure_type`    | Enclosure MIME type                     | `undefined`       | J, R          |
+| `upvotes`           | Number of upvotes                       | `undefined`       | A             |
+| `downvotes`         | Number of downvotes                     | `undefined`       | A             |
+| `comments`          | Number of comments                      | `undefined`       | A             |
+| `media.*`           | Media RSS fields                        | `undefined`       | R             |
+| `doi`               | Digital Object Identifier               | `undefined`       | R             |
+
+_Compatibility: A=Atom, J=JSON Feed, R=RSS 2.0_
 
 ## Important Notes
 
@@ -413,13 +556,16 @@ try {
 ## Common Development Pitfalls
 
 ### 1. Category Validation
+
 **Problem**: Using non-standard categories that cause TypeScript errors
 **Solution**: Always use the official Category type values listed above
 **Example**: Don't use `['ai', 'technology']` → Use `['programming', 'new-media']`
 
 ### 2. ESLint Compliance
+
 **Problem**: Pre-commit hooks failing due to ESLint errors
 **Common issues**:
+
 - Unused variables (remove or use all declared variables)
 - Using `console.error` instead of `logger.error`
 - Missing logger import
@@ -428,6 +574,7 @@ try {
 - String coercion without explicit conversion
 
 **Solutions**:
+
 ```typescript
 // ✅ Correct: Import and use logger
 import logger from '@/utils/logger';
@@ -456,6 +603,7 @@ const description = 'desc'; // Never used
 ```
 
 **Development workflow**:
+
 1. Write code
 2. Run `pnpm lint --fix` for auto-fixes
 3. Check remaining warnings/errors
@@ -463,10 +611,12 @@ const description = 'desc'; // Never used
 5. If hooks fail, fix issues and retry
 
 ### 4. TypeScript Type Annotations
+
 **Problem**: Missing type annotations for arrays and objects
 **Solution**: Always provide explicit types for better type safety
 
 **Examples**:
+
 ```typescript
 // ❌ Wrong: No type annotation
 const articles = [];
@@ -487,35 +637,38 @@ const items: Array<{ link: string; title: string }> = [];
 ```
 
 ### 5. HTML Parsing Best Practices
+
 **Problem**: Incorrect CSS selectors based on assumed HTML structure
 **Solution**: Always analyze real HTML structure before writing selectors
 
 **Key lessons**:
+
 - Use `children()` instead of `find()` for direct child elements
 - Match specific CSS classes for accurate element identification
 - Add debug logging to verify selector logic
 - Never guess HTML structure - always get actual DOM
 
 **Example pattern**:
+
 ```typescript
 // ✅ Correct: Specific class matching
-$('.flex-1.min-w-0.max-w-\\[1120px\\]').children().each((_, element) => {
-    const $element = $(element);
-    if (dateText.match(/\d{4}年\d{1,2}月\d{1,2}日/) &&
-        $element.hasClass('text-[#181E25]') &&
-        $element.hasClass('text-[16px]') &&
-        $element.hasClass('leading-[20px]') &&
-        $element.hasClass('font-[600]')) {
-        // Process date element
-    }
-});
+$('.flex-1.min-w-0.max-w-\\[1120px\\]')
+    .children()
+    .each((_, element) => {
+        const $element = $(element);
+        if (dateText.match(/\d{4}年\d{1,2}月\d{1,2}日/) && $element.hasClass('text-[#181E25]') && $element.hasClass('text-[16px]') && $element.hasClass('leading-[20px]') && $element.hasClass('font-[600]')) {
+            // Process date element
+        }
+    });
 ```
 
 ### 6. CSS Selector Stability Best Practices
+
 **Problem**: Using unstable, auto-generated CSS class names that break when website updates
 **Solution**: Prioritize stable selectors and text-based matching over auto-generated classes
 
 **Critical lessons**:
+
 - **NEVER use auto-generated class names** like `UserBaseInfo_textInfoContainer__JNjgO`, `css-1krxe8n`, `css-1rwhchs`
 - **PREFER stable data attributes** like `[data-framer-name="Featured Card"]`, `[data-testid="article"]`
 - **USE text-based selectors** like `:contains('Published on')`, `:contains('Read more')`
@@ -523,6 +676,7 @@ $('.flex-1.min-w-0.max-w-\\[1120px\\]').children().each((_, element) => {
 - **COMBINE selectors** for precision: `$('article h2:contains("Breaking")')`
 
 **Best practice examples**:
+
 ```typescript
 // ✅ Correct: Stable data attributes
 const featuredCard = $('[data-framer-name="Featured Card"]').first();
@@ -554,6 +708,7 @@ const articleCard = $('[class*="css-"][class*="krxe8n"]'); // Pattern matching
 ```
 
 **Selector priority order**:
+
 1. **Data attributes** (`[data-*]`) - Most stable
 2. **Text-based selectors** (`:contains()`) - Content-dependent but reliable
 3. **Semantic HTML** (`article`, `nav`, `section`) - Stable structure
@@ -565,15 +720,18 @@ const articleCard = $('[class*="css-"][class*="krxe8n"]'); // Pattern matching
 **Debugging tip**: When selectors fail, check the website's HTML for `data-` attributes, semantic tags, or unique text content before relying on CSS classes.
 
 ### 7. Date Parsing for Chinese Content
+
 **Problem**: Chinese date formats failing to parse correctly
 **Solution**: Use correct format strings and timezone handling
 
 **Key patterns**:
+
 - Chinese months and days can be single digits (e.g., "8月6日")
 - Use `M` and `D` format tokens instead of `MM` and `DD`
 - Always apply timezone for Chinese content (+8)
 
 **Examples**:
+
 ```typescript
 // ✅ Correct: Chinese date with timezone
 const date = timezone(parseDate(dateText, 'YYYY年M月D日'), 8);
@@ -583,12 +741,15 @@ const date = parseDate(dateText, 'YYYY年MM月DD日');
 ```
 
 **Common Chinese date formats**:
+
 - "2025年8月6日" → `YYYY年M月D日`
 - "2025年12月25日" → `YYYY年M月D日` (works for both single and double digits)
 
 ### 3. Git Commit Process
+
 **Problem**: Pre-commit hooks automatically format code but may fail on ESLint errors
 **Solution**: Fix all ESLint errors before committing. The hooks will:
+
 1. Run Prettier for formatting
 2. Run ESLint for code quality
 3. Convert line endings (CRLF → LF)
@@ -603,11 +764,13 @@ Based on real project experience, here are key insights for successful RSSHub ro
 ### Route Development Checklist
 
 #### Before Starting
+
 - [ ] Check for existing folder names to avoid conflicts
 - [ ] Use second-level domain as folder name (e.g., `github` instead of `github.com`)
 - [ ] Plan caching strategy
 
 #### During Implementation
+
 - [ ] Remove unused variables/parameters
 - [ ] Implement comprehensive caching
 - [ ] Add error handling with logger
@@ -615,11 +778,9 @@ Based on real project experience, here are key insights for successful RSSHub ro
 - [ ] Follow RSSHub patterns
 
 #### Before Commit
+
 - [ ] Run `pnpm lint --fix` for auto-fixes
 - [ ] Verify no ESLint errors remain
 - [ ] Test the route functionality
-
-
-
 
 The project's quality control systems (ESLint, pre-commit hooks, automated testing) ensure consistency and reliability across all routes.
