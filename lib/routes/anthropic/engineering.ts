@@ -9,6 +9,7 @@ export const route: Route = {
     path: '/engineering',
     categories: ['programming'],
     example: '/anthropic/engineering',
+    parameters: {},
     radar: [
         {
             source: ['www.anthropic.com/engineering', 'www.anthropic.com'],
@@ -56,6 +57,7 @@ async function handler() {
     return {
         title: 'Anthropic Engineering',
         link,
+        description: 'Latest engineering posts from Anthropic',
         image: `${baseUrl}/images/icons/apple-touch-icon.png`,
         item: items,
     };
