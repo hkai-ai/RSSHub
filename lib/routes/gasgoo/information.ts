@@ -98,7 +98,7 @@ export const route: Route = {
 
             const items = articles.map((item: any) => {
                 const title = item.title || '';
-                const link = `https://autodata.gasgoo.com/information/imView/articleDetail/${item.id}`;
+                const link = `https://autodata.gasgoo.com/information/imView/articleDetails/${item.id}`;
                 const description = item.bodyContent || '';
 
                 // 优先使用 publishLongTime (时间戳，更精确)
