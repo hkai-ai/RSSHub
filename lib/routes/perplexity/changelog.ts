@@ -1,7 +1,8 @@
-import { Route } from '@/types';
 import { load } from 'cheerio';
-import cache from '@/utils/cache';
+
+import type { Route } from '@/types';
 import { unlockWebsite } from '@/utils/bright-data-unlocker';
+import cache from '@/utils/cache';
 import logger from '@/utils/logger';
 
 export const route: Route = {

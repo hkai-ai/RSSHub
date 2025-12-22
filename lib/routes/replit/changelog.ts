@@ -1,7 +1,8 @@
-import { Route } from '@/types';
-import { getPuppeteerPage } from '@/utils/puppeteer';
 import { load } from 'cheerio';
+
+import type { Route } from '@/types';
 import { parseDate } from '@/utils/parse-date';
+import { getPuppeteerPage } from '@/utils/puppeteer';
 import timezone from '@/utils/timezone';
 
 export const route: Route = {

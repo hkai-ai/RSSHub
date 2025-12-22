@@ -1,9 +1,11 @@
-import type { Route } from '@/types';
-import { parseDate } from '@/utils/parse-date';
-import cache from '@/utils/cache';
 import { load } from 'cheerio';
-import timezone from '@/utils/timezone';
 import { ofetch } from 'ofetch';
+
+import type { Route } from '@/types';
+import cache from '@/utils/cache';
+import { parseDate } from '@/utils/parse-date';
+import timezone from '@/utils/timezone';
+
 export const route: Route = {
     path: '/models',
     name: 'MiniMax 模型发布',

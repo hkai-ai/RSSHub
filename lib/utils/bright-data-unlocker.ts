@@ -1,6 +1,6 @@
 import { config } from '@/config';
-import ofetch from '@/utils/ofetch';
 import logger from '@/utils/logger';
+import ofetch from '@/utils/ofetch';
 
 const apiKey = config.brightdata?.apiKey || '';
 const zone = config.brightdata?.unlockerZone || '';

@@ -1,6 +1,7 @@
-import { Route } from '@/types';
-import { unlockWebsite } from '@/utils/bright-data-unlocker';
 import { load } from 'cheerio';
+
+import type { Route } from '@/types';
+import { unlockWebsite } from '@/utils/bright-data-unlocker';
 import cache from '@/utils/cache';
 import logger from '@/utils/logger';
 

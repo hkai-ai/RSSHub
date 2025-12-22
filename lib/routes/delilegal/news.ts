@@ -1,7 +1,7 @@
-import { Route } from '@/types';
+import type { Route } from '@/types';
+import logger from '@/utils/logger';
 import ofetch from '@/utils/ofetch';
 import timezone from '@/utils/timezone';
-import logger from '@/utils/logger';
 
 export const route: Route = {
     path: '/news/:category?/:value?',

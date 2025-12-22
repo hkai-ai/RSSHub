@@ -1,9 +1,10 @@
-import { Route } from '@/types';
 import { load } from 'cheerio';
-import { parseDate } from '@/utils/parse-date';
-import cache from '@/utils/cache';
+
+import type { Route } from '@/types';
 import { unlockWebsite } from '@/utils/bright-data-unlocker';
+import cache from '@/utils/cache';
 import logger from '@/utils/logger';
+import { parseDate } from '@/utils/parse-date';
 
 export const route: Route = {
     path: '/blog',

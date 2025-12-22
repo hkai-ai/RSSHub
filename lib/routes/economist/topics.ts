@@ -1,7 +1,9 @@
-import { Route, ViewType } from '@/types';
 import { load } from 'cheerio';
-import { parseDate } from '@/utils/parse-date';
 import sanitizeHtml from 'sanitize-html';
+
+import type { Route } from '@/types';
+import { ViewType } from '@/types';
+import { parseDate } from '@/utils/parse-date';
 import { getPuppeteerPage } from '@/utils/puppeteer';
 
 export const route: Route = {

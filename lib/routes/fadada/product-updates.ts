@@ -1,9 +1,11 @@
-import { Route } from '@/types';
+import { URL } from 'node:url';
+
+import { load } from 'cheerio';
+
+import type { Route } from '@/types';
 import ofetch from '@/utils/ofetch';
 import { parseDate } from '@/utils/parse-date';
-import { load } from 'cheerio';
 import timezone from '@/utils/timezone';
-import { URL } from 'node:url';
 
 export const route: Route = {
     path: '/product-updates',

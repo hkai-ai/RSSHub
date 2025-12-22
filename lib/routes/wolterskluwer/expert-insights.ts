@@ -1,8 +1,8 @@
+import { config } from '@/config';
 import type { Route } from '@/types';
+import cache from '@/utils/cache';
 import ofetch from '@/utils/ofetch';
 import { parseDate } from '@/utils/parse-date';
-import cache from '@/utils/cache';
-import { config } from '@/config';
 
 export const route: Route = {
     path: '/expert-insights/:types?',

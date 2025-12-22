@@ -1,9 +1,10 @@
-import { Route } from '@/types';
+import { load } from 'cheerio';
+
+import type { Route } from '@/types';
+import logger from '@/utils/logger';
 import ofetch from '@/utils/ofetch';
 import { parseDate } from '@/utils/parse-date';
-import { load } from 'cheerio';
 import timezone from '@/utils/timezone';
-import logger from '@/utils/logger';
 
 export const route: Route = {
     path: '/news',

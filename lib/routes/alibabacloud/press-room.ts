@@ -1,8 +1,9 @@
-import { Route } from '@/types';
+import { JSDOM } from 'jsdom';
+
+import type { Route } from '@/types';
 import got from '@/utils/got';
 import { parseDate } from '@/utils/parse-date';
 import timezone from '@/utils/timezone';
-import { JSDOM } from 'jsdom';
 
 /**
  * 阿里巴巴云新闻文章数据接口

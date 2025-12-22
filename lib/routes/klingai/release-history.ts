@@ -1,8 +1,9 @@
-import { Route } from '@/types';
-import cache from '@/utils/cache';
-import { getPuppeteerPage } from '@/utils/puppeteer';
 import { load } from 'cheerio';
+
+import type { Route } from '@/types';
+import cache from '@/utils/cache';
 import { parseDate } from '@/utils/parse-date';
+import { getPuppeteerPage } from '@/utils/puppeteer';
 
 export const route: Route = {
     path: '/release-history',

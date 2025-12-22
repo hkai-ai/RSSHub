@@ -1,10 +1,11 @@
-import type { Route } from '@/types';
 import { load } from 'cheerio';
+
+import { config } from '@/config';
+import type { Route } from '@/types';
+import cache from '@/utils/cache';
+import logger from '@/utils/logger';
 import ofetch from '@/utils/ofetch';
 import { parseDate } from '@/utils/parse-date';
-import cache from '@/utils/cache';
-import { config } from '@/config';
-import logger from '@/utils/logger';
 
 export const route: Route = {
     path: '/changelog',

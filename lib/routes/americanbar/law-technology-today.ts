@@ -1,8 +1,10 @@
+import { load } from 'cheerio';
+
 import type { Route } from '@/types';
 import { unlockWebsite } from '@/utils/bright-data-unlocker';
-import { load } from 'cheerio';
-import { parseDate } from '@/utils/parse-date';
 import cache from '@/utils/cache';
+import { parseDate } from '@/utils/parse-date';
+
 const baseUrl = 'https://www.americanbar.org/groups/law_practice/resources/law-technology-today/';
 
 export const route: Route = {

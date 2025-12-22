@@ -1,9 +1,10 @@
-import { Route } from '@/types';
-import { getPuppeteerPage } from '@/utils/puppeteer';
 import { load } from 'cheerio';
-import timezone from '@/utils/timezone';
+
+import type { Route } from '@/types';
 import logger from '@/utils/logger';
 import { parseDate } from '@/utils/parse-date';
+import { getPuppeteerPage } from '@/utils/puppeteer';
+import timezone from '@/utils/timezone';
 
 export const route: Route = {
     path: '/product-updates',
