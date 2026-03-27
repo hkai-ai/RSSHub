@@ -41,5 +41,6 @@ package-lock.json
 yarn.lock
 yarn-error.log
 
-.claude
+.claude/*
+!.claude/skills
 dist-container
