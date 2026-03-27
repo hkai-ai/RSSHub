@@ -21,7 +21,8 @@ export const route: Route = {
     },
     radar: [
         {
-            source: ['www.inceptionlabs.ai/blog'],
+            source: ['www.inceptionlabs.ai/blog', 'www.inceptionlabs.ai/blog/*'],
+            target: '/inceptionlabs/blog',
         },
     ],
     name: 'Blog',
