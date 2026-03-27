@@ -129,9 +129,15 @@ The `categories` field only accepts these values:
 
 Do NOT invent categories like `'ai'` or `'technology'`.
 
-### Phase 4: Test
+### Phase 4: Test & Present Results
 
-Test the route handler directly before committing:
+#### 4.1 Lint
+
+```bash
+npx eslint lib/routes/domain/route.ts
+```
+
+#### 4.2 Local handler test
 
 ```bash
 node --import tsx -e "
@@ -142,11 +148,29 @@ console.log('First:', result.item?.[0]?.title);
 "
 ```
 
-Then lint:
+#### 4.3 Present links and sample data to the user
 
-```bash
-npx eslint lib/routes/domain/route.ts
-```
+After the route is working, always output the following to the user:
+
+1. **Production URL** (with auth code):
+
+    ```
+    https://rsshub.newsdiy.cn/<route-path>?code=<md5-hash>
+    ```
+
+    The auth code is `md5('/<route-path>' + 'yuansunkeji')`. Compute it with:
+
+    ```bash
+    echo -n '/<route-path>yuansunkeji' | md5sum | cut -d' ' -f1
+    ```
+
+2. **Local dev URL** (no auth needed):
+
+    ```
+    http://localhost:1200/<route-path>
+    ```
+
+3. **Sample data**: Show 3-5 items from the test output (title, link, date) so the user can verify correctness at a glance.
 
 ---
 
