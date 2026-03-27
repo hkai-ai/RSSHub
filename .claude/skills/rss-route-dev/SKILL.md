@@ -170,7 +170,7 @@ After the route is working, always output the following to the user:
     http://localhost:1200/<route-path>
     ```
 
-3. **Sample data**: Show 3-5 items from the test output (title, link, date) so the user can verify correctness at a glance.
+3. **Sample data**: Show 3-5 items from the test output in a table, **must include the full article URL** for each item alongside title and date, so the user can click through to verify correctness.
 
 ---
 
