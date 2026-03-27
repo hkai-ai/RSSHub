@@ -28,6 +28,8 @@ node_modules
 tmp
 dist
 dist-lib
+dist-worker
+.wrangler
 
 Session.vim
 combined.log
@@ -40,3 +42,4 @@ yarn.lock
 yarn-error.log
 
 .claude
+dist-container

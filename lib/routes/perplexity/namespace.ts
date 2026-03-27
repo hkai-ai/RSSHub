@@ -2,6 +2,7 @@ import type { Namespace } from '@/types';
 
 export const namespace: Namespace = {
     name: 'Perplexity',
-    url: 'perplexity.ai',
-    description: 'Perplexity is an AI-powered search engine that provides conversational answers with citations.',
+    url: 'www.perplexity.ai',
+    description: 'Perplexity - AI-powered search and discovery engine',
+    lang: 'en',
 };

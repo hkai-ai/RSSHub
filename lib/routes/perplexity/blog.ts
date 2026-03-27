@@ -1,141 +1,159 @@
 import { load } from 'cheerio';
+import type { Context } from 'hono';
 
-import type { Route } from '@/types';
-import { unlockWebsite } from '@/utils/bright-data-unlocker';
+import type { Data, DataItem, Route } from '@/types';
+import { ViewType } from '@/types';
 import cache from '@/utils/cache';
-import logger from '@/utils/logger';
 import { parseDate } from '@/utils/parse-date';
+import { getPuppeteerPage } from '@/utils/puppeteer';
 
 export const route: Route = {
     path: '/blog',
-    name: 'Blog',
-    categories: ['programming', 'new-media'],
     example: '/perplexity/blog',
+    url: 'www.perplexity.ai',
+    categories: ['blog'],
     parameters: {},
     features: {
-        requireConfig: [
-            {
-                name: 'BRIGHTDATA_API_KEY',
-                description: 'Bright Data API key for bypassing anti-bot measures',
-            },
-            {
-                name: 'BRIGHTDATA_UNLOCKER_ZONE',
-                description: 'Bright Data zone identifier for web unlocker',
-            },
-        ],
-        requirePuppeteer: false,
-        antiCrawler: true,
+        requireConfig: false,
+        requirePuppeteer: true,
+        antiCrawler: false,
         supportBT: false,
         supportPodcast: false,
         supportScihub: false,
     },
     radar: [
         {
-            source: ['perplexity.ai/hub', 'www.perplexity.ai/hub'],
+            source: ['www.perplexity.ai/hub'],
+            target: '/blog',
         },
     ],
-    maintainers: [],
-    handler: async () => {
-        const baseUrl = 'https://www.perplexity.ai';
-        const url = `${baseUrl}/hub`;
+    name: 'Blog',
+    maintainers: ['seeyangzhi'],
+    handler,
+    description: "Perplexity Blog - Explore Perplexity's blog for articles, announcements, product updates, and tips to optimize your experience. Stay informed and make the most of Perplexity.",
+    view: ViewType.Notifications,
+};
 
-        const data = await cache.tryGet(
-            url,
-            async () => {
-                const response = await unlockWebsite(url);
+async function handler(ctx: Context) {
+    const limit = Number.parseInt(ctx.req.query('limit') ?? '20', 10);
+    const rootUrl = 'https://www.perplexity.ai/hub';
 
-                const $ = load(response);
-                const items: Array<{
-                    title: string;
-                    link: string;
-                    description: string;
-                    author: string;
-                    category: string;
-                    pubDate?: Date;
-                }> = [];
+    const { page, destory, browser } = await getPuppeteerPage(rootUrl, {
+        onBeforeLoad: async (page) => {
+            await page.setRequestInterception(true);
+            page.on('request', (request) => {
+                request.resourceType() === 'document' ? request.continue() : request.abort();
+            });
+        },
+    });
 
-                // Process featured article first
-                const featuredCard = $('[data-framer-name="Featured Card"]').first();
-                const featuredLink = featuredCard.find('a[href!=""][href]').first();
-                if (featuredLink.length > 0) {
-                    const href = featuredLink.attr('href');
-                    const title = featuredCard.find('h3 a').text().trim();
-                    const description = featuredCard.find('[data-framer-component-type="RichTextContainer"]').eq(1).text().trim();
+    const html = await page.evaluate(() => document.documentElement.innerHTML);
+    const $ = load(html);
 
-                    if (href && title) {
-                        const fullLink = href.startsWith('./hub/') ? `${baseUrl}${href.slice(1)}` : href.startsWith('/') ? `${baseUrl}${href}` : href;
+    const items: DataItem[] = [];
 
-                        // Fetch the article page to extract the publication date
-                        let pubDate: Date | undefined;
-                        try {
-                            const articleHtml = await cache.tryGet(fullLink, () => unlockWebsite(fullLink), 3600 * 24 * 7);
-                            const $article = load(articleHtml);
+    const seenLinks = new Set<string>();
 
-                            const dateContainer = $article("p:contains('Published on')").parent().next();
-                            const dateText = dateContainer.text().trim();
+    // Step 1: Extract featured article using data-framer-name attribute
+    const featuredCard = $('[data-framer-name="Featured Card"]').first();
+    const featuredHref = featuredCard.find('a[href^="./hub/blog/"]').first().attr('href');
+    const featuredTitle = featuredCard.find('h4').first().text().trim();
 
-                            if (dateText) {
-                                pubDate = parseDate(dateText);
-                            }
-                        } catch (error) {
-                            // Log error but continue without date
-                            logger.error(`Failed to fetch date for featured article: ${title}`, error);
-                        }
+    if (featuredHref && featuredTitle) {
+        const link = new URL(featuredHref, rootUrl).href;
+        seenLinks.add(link);
+        items.push({
+            link,
+            title: featuredTitle,
+        });
+    }
 
-                        items.push({
-                            title,
-                            link: fullLink,
-                            description: description || title,
-                            author: 'Perplexity',
-                            category: 'featured',
-                            pubDate,
-                        });
+    // Step 2: Extract regular articles using data-framer-name="Article Card"
+    for (const element of $('[data-framer-name="Article Card"]').toArray()) {
+        const $card = $(element);
+        const href = $card.attr('href');
+        const title = $card.find('h6').first().text().trim();
+
+        if (!href || !title) {
+            continue;
+        }
+
+        const link = new URL(href, rootUrl).href;
+
+        if (seenLinks.has(link)) {
+            continue;
+        }
+        seenLinks.add(link);
+
+        // First <p> contains the date, subsequent <p> elements are categories
+        const paragraphs = $card.find('p').toArray();
+        const dateText = paragraphs.length > 0 ? $(paragraphs[0]).text().trim() : '';
+        const pubDate = dateText ? parseDate(dateText) : undefined;
+
+        const category = paragraphs
+            .slice(1)
+            .map((p) => $(p).text().trim())
+            .filter(Boolean);
+
+        items.push({
+            link,
+            title,
+            pubDate,
+            category: category.length > 0 ? category : undefined,
+        });
+    }
+
+    // Step 3: Fetch detail pages for items missing pubDate (e.g., featured article)
+    // and extract article content for description
+    const resultItems = await Promise.all(
+        items.slice(0, limit).map(async (item) => {
+            if (!item.link) {
+                return item;
+            }
+
+            return (await cache.tryGet(item.link, async () => {
+                const contentPage = await browser.newPage();
+
+                await contentPage.setRequestInterception(true);
+                contentPage.on('request', (request) => {
+                    request.resourceType() === 'document' ? request.continue() : request.abort();
+                });
+
+                await contentPage.goto(item.link!, { waitUntil: 'domcontentloaded' });
+
+                const contentHtml = await contentPage.evaluate(() => document.documentElement.innerHTML);
+                await contentPage.close();
+
+                const $content = load(contentHtml);
+
+                let pubDate: string | number | Date | undefined = item.pubDate;
+                if (!pubDate) {
+                    const timeEl = $content('time[datetime]').first();
+                    if (timeEl.length) {
+                        pubDate = parseDate(timeEl.attr('datetime')!);
                     }
                 }
 
-                // Process regular articles from Not Featured container
-                const notFeaturedContainer = $('[data-framer-name="Not Featured"]');
-                const articleCards = notFeaturedContainer.children();
-                articleCards.each((_, element) => {
-                    const $card = $(element);
-                    const articleLink = $card.find('[href!=""][href]').first();
-                    const href = articleLink.attr('href');
-                    if (href) {
-                        const fullLink = href.startsWith('http') ? href : href.startsWith('/') ? `${baseUrl}${href}` : `${baseUrl}${href.slice(1)}`;
-                        if (items.some((item) => item.link === fullLink)) {
-                            return;
-                        }
-                        const title = $card.find('[data-framer-name="Title"]').text().trim() || $card.find('h4').text().trim();
-                        const dateElement = $card.find('[data-framer-name="Date"]');
-                        const dateText = dateElement.text().trim();
+                $content('script, style, noscript').remove();
 
-                        let pubDate: Date | undefined;
-                        if (dateText) {
-                            pubDate = parseDate(dateText);
-                        }
-
-                        items.push({
-                            title,
-                            link: fullLink,
-                            description: title,
-                            author: 'Perplexity',
-                            category: 'blog',
-                            pubDate,
-                        });
-                    }
-                });
+                const contentArea = $content('[data-framer-name="Content"]').first();
+                const description = contentArea.length ? (contentArea.html() ?? undefined) : undefined;
 
                 return {
-                    title: 'Perplexity Blog',
-                    link: url,
-                    description: 'Latest blog posts from Perplexity AI',
-                    item: items,
-                };
-            },
-            3600,
-            false
-        );
+                    ...item,
+                    pubDate,
+                    description,
+                } as DataItem;
+            })) as DataItem;
+        })
+    );
 
-        return data;
-    },
-};
+    await destory();
+
+    return {
+        title: 'Perplexity Blog',
+        link: rootUrl,
+        item: resultItems,
+        language: 'en',
+    } satisfies Data;
+}

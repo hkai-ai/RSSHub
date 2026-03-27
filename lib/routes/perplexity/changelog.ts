@@ -1,159 +1,172 @@
 import { load } from 'cheerio';
+import type { Context } from 'hono';
 
-import type { Route } from '@/types';
-import { unlockWebsite } from '@/utils/bright-data-unlocker';
+import type { Data, DataItem, Route } from '@/types';
+import { ViewType } from '@/types';
 import cache from '@/utils/cache';
 import logger from '@/utils/logger';
+import { parseDate } from '@/utils/parse-date';
+import { getPuppeteerPage } from '@/utils/puppeteer';
+
+export const handler = async (ctx: Context): Promise<Data> => {
+    const limit = Number.parseInt(ctx.req.query('limit') ?? '20', 10);
+
+    const baseUrl = 'https://www.perplexity.ai';
+    const targetUrl = `${baseUrl}/changelog`;
+
+    logger.http(`Fetching Perplexity changelog from ${targetUrl}`);
+
+    const { page, destory, browser } = await getPuppeteerPage(targetUrl, {
+        onBeforeLoad: async (page) => {
+            await page.setRequestInterception(true);
+            page.on('request', (request) => {
+                request.resourceType() === 'document' ? request.continue() : request.abort();
+            });
+        },
+    });
+
+    const html = await page.evaluate(() => document.documentElement.innerHTML);
+    const $ = load(html);
+    const language = $('html').attr('lang') ?? 'en';
+
+    const seenLinks = new Set<string>();
+
+    const items = $('a[href^="./changelog/"]')
+        .toArray()
+        .map((elem) => {
+            const $link = $(elem);
+            const href = $link.attr('href');
+
+            if (!href || !href.startsWith('./changelog/')) {
+                return null;
+            }
+
+            const fullLink = href.startsWith('http') ? href : `${baseUrl}${href.replace('./', '/')}`;
+
+            if (seenLinks.has(fullLink)) {
+                return null;
+            }
+
+            const $title = $link.find('[data-framer-name="Title"]').first();
+            // Fallback: extract title from URL slug
+            const title = $title.text().trim() || href.replace('./changelog/', '').replaceAll('-', ' ');
+
+            const $category = $link.find('[data-framer-name="Category"] p').first();
+            const dateText = $category.text().trim();
+
+            let $summary = $link.find('[data-framer-name="Description"] p, [data-framer-name="Summary"] p').first();
+            if (!$summary.length) {
+                $summary = $link.find('p.framer-text').not($title).not($category).first();
+            }
+            const summary = $summary.text().trim();
+
+            seenLinks.add(fullLink);
+
+            let pubDate: Date | undefined;
+            if (dateText) {
+                // Format: MM.DD.YY or MM.DD.YYYY (e.g., 12.12.24 = December 12, 2024)
+                const dateMatch = dateText.match(/(\d{2})\.(\d{2})\.(\d{2,4})/);
+                if (dateMatch) {
+                    const [, month, day, year] = dateMatch;
+                    const fullYear = year.length === 2 ? `20${year}` : year;
+                    pubDate = parseDate(`${fullYear}-${month}-${day}`);
+                } else {
+                    pubDate = parseDate(dateText);
+                }
+            } else {
+                const dateMatch = title.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?,\s*\d{4}/);
+                if (dateMatch) {
+                    pubDate = parseDate(dateMatch[0]);
+                }
+            }
+
+            return {
+                title,
+                description: summary,
+                link: fullLink,
+                pubDate,
+                guid: `perplexity-changelog-${fullLink}`,
+                id: `perplexity-changelog-${fullLink}`,
+            } as DataItem;
+        })
+        .filter((item): item is DataItem => item !== null);
+
+    // Fetch full content for each item using the same browser session
+    const resultItems = await Promise.all(
+        items.slice(0, limit).map(async (item) => {
+            if (!item.link) {
+                return item;
+            }
+            return await cache.tryGet(item.link, async () => {
+                logger.http(`Fetching full content for ${item.link!}`);
+
+                // Create a new page in the same browser session
+                const contentPage = await browser.newPage();
+
+                // Set request interception for this page
+                await contentPage.setRequestInterception(true);
+                contentPage.on('request', (request) => {
+                    request.resourceType() === 'document' ? request.continue() : request.abort();
+                });
+
+                // Navigate to the item link
+                await contentPage.goto(item.link!, { waitUntil: 'domcontentloaded' });
+
+                const contentHtml = await contentPage.evaluate(() => document.documentElement.innerHTML);
+                await contentPage.close();
+
+                const $content = load(contentHtml);
+
+                // Find the main article content - RichTextContainer with substantial text
+                // Look for elements with framer-text class containing actual content
+                const contentContainer = $content('div#main > div > div > div[data-framer-component-type="RichTextContainer"]').first();
+                const fullContent = contentContainer.html()?.trim() || '';
+
+                return {
+                    ...item,
+                    description: fullContent || item.description,
+                };
+            });
+        })
+    );
+
+    // Close the browser session after all requests are done
+    await destory();
+
+    return {
+        title: $('title').text() || 'Perplexity Changelog',
+        description: $('meta[name="description"], meta[property="og:description"]').first().attr('content') || 'Latest updates and changes from Perplexity',
+        link: targetUrl,
+        item: resultItems,
+        allowEmpty: true,
+        image: $('meta[property="og:image"]').attr('content'),
+        language: language as 'en',
+    };
+};
 
 export const route: Route = {
     path: '/changelog',
     name: 'Changelog',
-    categories: ['programming', 'new-media'],
+    url: 'www.perplexity.ai',
+    maintainers: ['xbot'],
+    handler,
     example: '/perplexity/changelog',
-    parameters: {},
+    description: 'Subscribe to Perplexity changelog for latest updates and releases.',
+    categories: ['program-update'],
     features: {
-        requireConfig: [
-            {
-                name: 'BRIGHTDATA_API_KEY',
-                description: 'Bright Data API key for bypassing anti-bot measures',
-            },
-            {
-                name: 'BRIGHTDATA_UNLOCKER_ZONE',
-                description: 'Bright Data zone identifier for web unlocker',
-            },
-        ],
-        requirePuppeteer: false,
-        antiCrawler: true,
+        requireConfig: false,
+        requirePuppeteer: true,
+        antiCrawler: false,
+        supportRadar: true,
         supportBT: false,
         supportPodcast: false,
         supportScihub: false,
     },
     radar: [
         {
-            source: ['perplexity.ai/changelog', 'www.perplexity.ai/changelog'],
+            source: ['www.perplexity.ai/changelog'],
+            target: '/changelog',
         },
     ],
-    maintainers: ['your-github-username'],
-    handler: async () => {
-        const baseUrl = 'https://www.perplexity.ai';
-        const url = `${baseUrl}/changelog`;
-
-        const data = await cache.tryGet(
-            url,
-            async () => {
-                try {
-                    const response = await unlockWebsite(url);
-                    const $ = load(response);
-                    const items: Array<{
-                        title: string;
-                        link: string;
-                        description: string;
-                        author: string;
-                        category: string;
-                        pubDate?: Date;
-                        image?: string;
-                    }> = [];
-
-                    // Find all changelog entries using stable data attributes
-                    const changelogContainer = $('[data-framer-name="Change Log"]');
-                    const changelogItems = changelogContainer.find('a[href]');
-                    const seenLinks = new Set<string>();
-                    const seenTitles = new Set<string>();
-
-                    changelogItems.each((_, element) => {
-                        const $item = $(element);
-                        const href = $item.attr('href');
-
-                        if (href) {
-                            // Extract title from data-framer-name="Title" container
-                            const titleElement = $item.find('[data-framer-name="Title"]');
-                            const title = titleElement.text().trim();
-
-                            // Extract description from the text content after title
-                            const descriptionElement = $item.find('[data-framer-component-type="RichTextContainer"]').not('[data-framer-name="Title"]').not('[data-framer-name="Category"]');
-                            let description = '';
-                            descriptionElement.each((_, desc) => {
-                                const text = $(desc).text().trim();
-                                if (text && !/^\d{2}\.\d{2}\.\d{2}$/.test(text) && text !== title && text !== 'See changes') {
-                                    description = text;
-                                    return false; // Break the loop
-                                }
-                            });
-
-                            // Extract date from data-framer-name="Category" (which contains the date)
-                            const dateElement = $item.find('[data-framer-name="Category"]');
-                            const dateText = dateElement.text().trim();
-
-                            let pubDate: Date | undefined;
-                            if (dateText && /^\d{2}\.\d{2}\.\d{2}$/.test(dateText)) {
-                                try {
-                                    // Parse date format MM.DD.YY
-                                    const [month, day, year] = dateText.split('.');
-                                    const fullYear = Number(`20${year}`); // Convert YY to 20YY
-                                    pubDate = new Date(fullYear, Number(month) - 1, Number(day));
-                                } catch (error) {
-                                    logger.error(`Date parsing error for "${dateText}":`, error);
-                                }
-                            }
-
-                            // Extract image URL if available
-                            const imageElement = $item.find('img[src]');
-                            const imageSrc = imageElement.attr('src');
-                            let image: string | undefined;
-                            if (imageSrc) {
-                                image = imageSrc.startsWith('http') ? imageSrc : `https:${imageSrc}`;
-                            }
-
-                            // Construct full URL
-                            const fullLink = href.startsWith('./changelog/') ? `${baseUrl}${href.slice(1)}` : href.startsWith('/') ? `${baseUrl}${href}` : href.startsWith('http') ? href : `${baseUrl}/changelog/${href}`;
-
-                            // Check for duplicates
-                            if (title && fullLink && !seenLinks.has(fullLink) && !seenTitles.has(title)) {
-                                seenLinks.add(fullLink);
-                                seenTitles.add(title);
-
-                                items.push({
-                                    title,
-                                    link: fullLink,
-                                    description: description || title,
-                                    author: 'Perplexity',
-                                    category: 'changelog',
-                                    pubDate,
-                                    image,
-                                });
-                            }
-                        }
-                    });
-
-                    // Sort items by date (newest first)
-                    items.sort((a, b) => {
-                        if (!a.pubDate && !b.pubDate) {
-                            return 0;
-                        }
-                        if (!a.pubDate) {
-                            return 1;
-                        }
-                        if (!b.pubDate) {
-                            return -1;
-                        }
-                        return b.pubDate.getTime() - a.pubDate.getTime();
-                    });
-
-                    return {
-                        title: 'Perplexity Changelog',
-                        link: url,
-                        description: 'Latest product updates and feature releases from Perplexity AI',
-                        item: items,
-                    };
-                } catch (error) {
-                    logger.error('Failed to fetch Perplexity changelog:', error);
-                    throw error;
-                }
-            },
-            3600,
-            false
-        );
-
-        return data;
-    },
+    view: ViewType.Articles,
 };
