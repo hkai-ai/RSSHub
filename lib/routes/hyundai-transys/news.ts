@@ -47,7 +47,7 @@ export const route: Route = {
             });
         } catch (error) {
             logger.error(`Failed to fetch news from HYUNDAI TRANSYS API:`, error);
-            throw new Error('Failed to fetch news data');
+            throw new Error('Failed to fetch news data', { cause: error });
         }
         // Parse JSON response
         let response;
@@ -55,7 +55,7 @@ export const route: Route = {
             response = JSON.parse(jsonrepair(responseText));
         } catch (error) {
             logger.error('Failed to parse JSON response:', error);
-            throw new Error('Invalid JSON response');
+            throw new Error('Invalid JSON response', { cause: error });
         }
 
         // Extract news data from the 'other' property in the response

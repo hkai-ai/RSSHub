@@ -168,7 +168,7 @@ export const route: Route = {
             }
         } catch (error) {
             logger.error('获取e签宝产品更新失败:', error);
-            throw new Error('Failed to fetch product updates from help.esign.cn');
+            throw new Error('Failed to fetch product updates from help.esign.cn', { cause: error });
         }
     },
 };

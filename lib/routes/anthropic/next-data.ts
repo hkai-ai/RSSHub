@@ -2,7 +2,7 @@ import * as cheerio from 'cheerio';
 
 const unescapeJsonString = (escaped: string) => JSON.parse(`"${escaped}"`);
 
-export function extractNextFlightObjects(html: string): Record<string, any>[] {
+export function extractNextFlightObjects(html: string): Array<Record<string, any>> {
     const $ = cheerio.load(html, { scriptingEnabled: false });
 
     // 只取 nonce 存在且非空的 <script>
@@ -14,7 +14,7 @@ export function extractNextFlightObjects(html: string): Record<string, any>[] {
     // 固定格式：self.__next_f.push([ number, "escaped" ])
     const PUSH_RE = /self\.__next_f\.push\(\[\s*(\d+)\s*,\s*"((?:[^"\\]|\\.)*)"\s*\]\)/g;
 
-    const objects: Record<string, any>[] = [];
+    const objects: Array<Record<string, any>> = [];
 
     scripts.each((_, el) => {
         const code = ($(el).html() ?? $(el).text() ?? '').toString();

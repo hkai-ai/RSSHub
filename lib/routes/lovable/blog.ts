@@ -18,7 +18,7 @@ const handler = async () => {
         });
     } catch (error) {
         logger.error(`Failed to fetch ${targetUrl}:`, error);
-        throw new Error('Failed to fetch Lovable blog');
+        throw new Error('Failed to fetch Lovable blog', { cause: error });
     }
 
     const $ = load(html);

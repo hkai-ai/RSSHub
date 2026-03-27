@@ -26,11 +26,11 @@ interface SeedArticleMeta {
     Author: string;
     Status: number;
     PublishDate: number;
-    ResearchArea: {
+    ResearchArea: Array<{
         ResearchAreaID: number;
         ResearchAreaName: string;
         ResearchAreaNameZh: string;
-    }[];
+    }>;
     Cover: string;
     Thumbnail: string;
     Journal: string;

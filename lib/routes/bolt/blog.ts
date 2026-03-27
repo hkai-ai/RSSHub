@@ -137,7 +137,7 @@ export const route: Route = {
             };
         } catch (error) {
             logger.error('Error fetching Bolt blog:', error);
-            throw new Error('Failed to fetch Bolt blog content');
+            throw new Error('Failed to fetch Bolt blog content', { cause: error });
         }
     },
 };

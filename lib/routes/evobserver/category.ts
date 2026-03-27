@@ -51,7 +51,7 @@ export const route: Route = {
             html = await ofetch(categoryUrl);
         } catch (error) {
             logger.error(`Failed to fetch ${categoryUrl}:`, error);
-            throw new Error(`Unable to fetch articles from ${categoryUrl}`);
+            throw new Error(`Unable to fetch articles from ${categoryUrl}`, { cause: error });
         }
 
         const $ = load(html);

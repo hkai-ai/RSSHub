@@ -91,7 +91,7 @@ export const route: Route = {
             };
         } catch (error) {
             logger.error('Failed to fetch fadada.com company news:', error);
-            throw new Error('Failed to fetch news from fadada.com');
+            throw new Error('Failed to fetch news from fadada.com', { cause: error });
         }
     },
 };

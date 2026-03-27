@@ -101,7 +101,7 @@ async function handler() {
         const scriptFunction = new Function('window', pressPageDataScript);
         scriptFunction(window);
     } catch (error) {
-        throw new Error(`执行 pressPageData 脚本失败: ${error}`);
+        throw new Error(`执行 pressPageData 脚本失败: ${error}`, { cause: error });
     }
 
     // 获取解析后的数据

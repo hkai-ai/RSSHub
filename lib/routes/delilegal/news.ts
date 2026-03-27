@@ -130,7 +130,7 @@ export const route: Route = {
             };
         } catch (error) {
             logger.error(`Failed to fetch delilegal news from API:`, error);
-            throw new Error(`Failed to fetch news from delilegal.com API: ${error}`);
+            throw new Error(`Failed to fetch news from delilegal.com API: ${error}`, { cause: error });
         }
     },
 };

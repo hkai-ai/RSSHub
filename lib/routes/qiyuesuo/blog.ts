@@ -95,7 +95,7 @@ export const route: Route = {
             };
         } catch (error) {
             logger.error('Error fetching 契约锁产品动态:', error);
-            throw new Error('Failed to fetch 契约锁产品动态');
+            throw new Error('Failed to fetch 契约锁产品动态', { cause: error });
         }
     },
 };

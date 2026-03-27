@@ -111,7 +111,7 @@ export const route: Route = {
             };
         } catch (error) {
             logger.error('Error fetching Replit blog:', error);
-            throw new Error('Failed to fetch Replit blog data');
+            throw new Error('Failed to fetch Replit blog data', { cause: error });
         }
     },
 };

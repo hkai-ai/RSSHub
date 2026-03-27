@@ -91,7 +91,7 @@ export const route: Route = {
                     : allItems;
 
                 // Sort by date (newest first)
-                const sortedItems = filteredItems.sort((a, b) => {
+                const sortedItems = filteredItems.toSorted((a, b) => {
                     const dateA = new Date(a.date);
                     const dateB = new Date(b.date);
                     return dateB.getTime() - dateA.getTime();

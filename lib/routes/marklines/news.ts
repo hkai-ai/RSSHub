@@ -38,7 +38,7 @@ export const route: Route = {
             html = await ofetch(url);
         } catch (error) {
             logger.error(`Failed to fetch MarkLines news:`, error);
-            throw new Error('Failed to fetch news data');
+            throw new Error('Failed to fetch news data', { cause: error });
         }
 
         const $ = load(html);

@@ -90,7 +90,7 @@ const handler = async (): Promise<Data> => {
                 };
             } catch (error) {
                 logger.error(`Failed to fetch ${targetUrl}:`, error);
-                throw new Error('Data source unavailable');
+                throw new Error('Data source unavailable', { cause: error });
             }
         },
         3600,
