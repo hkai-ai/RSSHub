@@ -23,7 +23,7 @@ export const route: Route = {
     },
     radar: [
         {
-            source: ['claude.com/blog'],
+            source: ['claude.com/blog', 'claude.com/blog/*', 'claude.com/blog/category/*'],
             target: '/blog',
         },
     ],
