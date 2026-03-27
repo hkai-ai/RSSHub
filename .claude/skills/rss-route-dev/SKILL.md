@@ -20,9 +20,10 @@ Before writing any code, understand the target website:
 
 1. **Fetch the page** with `WebFetch` or a subagent to understand the HTML structure
 2. **Look for API endpoints** - check for JSON APIs, `__NEXT_DATA__`, RSS feeds, sitemaps
-3. **Inspect the real HTML** - never guess selectors; always verify with actual page content
-4. **Check for existing routes** in similar namespaces under `lib/routes/` for patterns to follow
-5. **Determine the domain** - use the second-level domain as the folder name (e.g., `github` not `github.com`)
+3. **Check for dedicated listing/archive pages** - homepages often show only a few items; look for `/articles`, `/blog`, `/archive`, `/posts` or similar paths that list all content (check sitemap.xml for clues)
+4. **Inspect the real HTML** - never guess selectors; always verify with actual page content
+5. **Check for existing routes** in similar namespaces under `lib/routes/` for patterns to follow
+6. **Determine the domain** - use the second-level domain as the folder name (e.g., `github` not `github.com`)
 
 ### Phase 2: Create Files
 
