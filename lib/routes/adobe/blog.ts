@@ -1,7 +1,5 @@
-import { load } from 'cheerio';
-
 import type { Route } from '@/types';
-import got from '@/utils/got';
+import ofetch from '@/utils/ofetch';
 
 export const route: Route = {
     path: '/blog/:topic?',
@@ -31,44 +29,44 @@ export const route: Route = {
     description: 'Get Adobe blog posts, optionally filtered by topic',
 };
 
+// Excel date serial epoch offset: days between 1899-12-30 (Excel epoch) and 1970-01-01 (JS epoch)
+const EXCEL_EPOCH_OFFSET = 25569;
+const MS_PER_DAY = 86_400_000;
+
 async function handler(ctx) {
     const { topic } = ctx.req.param();
     const limit = Number.parseInt(ctx.req.query('limit')) || 500;
     const offset = Number.parseInt(ctx.req.query('offset')) || 0;
 
-    let topicTag = topic;
-
-    // If topic is specified, get the actual tag from the topic page
-    if (topic) {
-        const topicUrl = `https://blog.adobe.com/en/topics/${topic}`;
-        const topicResponse = await got(topicUrl);
-        const $ = load(topicResponse.data);
-        const h1Element = $(`h1#${topic}`);
-        if (h1Element.length > 0) {
-            topicTag = h1Element.text().trim();
-        }
-    }
+    // Convert topic slug to title case for tag matching
+    // e.g., "adobe-firefly" → "Adobe Firefly"
+    const topicTag = topic
+        ? topic
+              .split('-')
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(' ')
+        : undefined;
 
     const apiUrl = 'https://blog.adobe.com/en/query-index.json';
 
-    const response = await got(apiUrl, {
-        searchParams: {
+    const response = await ofetch(apiUrl, {
+        query: {
             limit,
             offset,
         },
     });
 
-    let items = response.data.data || [];
+    let items: Array<{ date?: string; title?: string; path?: string; description?: string; author?: string; tags?: string; image?: string }> = response.data || [];
 
     // Filter by topic tag if specified
-    if (topicTag && topic) {
+    if (topicTag) {
         items = items.filter((item) => {
             if (!item.tags) {
                 return false;
             }
             try {
-                const tags = JSON.parse(item.tags);
-                return tags.includes(topicTag);
+                const tags: string[] = JSON.parse(item.tags);
+                return tags.some((tag) => tag.toLowerCase() === topicTag.toLowerCase());
             } catch {
                 return false;
             }
@@ -77,21 +75,20 @@ async function handler(ctx) {
 
     // Transform the data
     const feedItems = items.map((item) => {
-        // Convert Excel date serial number to JS Date
-        let pubDate;
+        let pubDate: Date | undefined;
         if (item.date) {
-            // Excel date serial number starts from 1900-01-01
-            const daysOffset = Number.parseInt(item.date) - 1; // Subtract 1 because Excel counts from day 1, not day 0
-            pubDate = new Date(daysOffset * 24 * 60 * 60 * 1000);
+            const serial = Number.parseInt(item.date);
+            if (!Number.isNaN(serial)) {
+                pubDate = new Date((serial - EXCEL_EPOCH_OFFSET) * MS_PER_DAY);
+            }
         }
 
         return {
             title: item.title || 'Untitled',
             link: `https://blog.adobe.com${item.path}`,
-            description: item.description || '',
-            pubDate: pubDate || undefined,
+            description: item.description && item.description !== '0' ? item.description : '',
+            pubDate,
             author: item.author || '',
-            category: item.category || [],
             image: item.image ? `https://blog.adobe.com${item.image}` : undefined,
         };
     });
