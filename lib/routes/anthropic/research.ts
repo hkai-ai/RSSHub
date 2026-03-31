@@ -28,25 +28,20 @@ async function handler() {
     }
     const items: DataItem[] = [];
     for (const chunk of data) {
-        if (chunk.page && chunk.page.sections && chunk.page.sections.length > 0 && chunk.page.sections[0].tabPages) {
-            for (const tabPage of chunk.page.sections[0].tabPages) {
-                for (const section of tabPage.sections) {
-                    if (section.posts) {
-                        const posts = section.posts as any[];
-                        for (const post of posts) {
-                            const pubDate = new Date(post.publishedOn);
-                            const link = 'https://www.anthropic.com/' + post.directories[0].value + '/' + post.slug.current;
-                            const description = post.summary;
-                            const title = post.title;
-                            const image = post.cardPhoto?.url;
-                            items.push({
-                                pubDate,
-                                link,
-                                description,
-                                title,
-                                image,
-                            });
-                        }
+        if (chunk.page?.sections) {
+            for (const section of chunk.page.sections) {
+                if (section.posts) {
+                    const posts = section.posts as any[];
+                    for (const post of posts) {
+                        const pubDate = new Date(post.publishedOn);
+                        const postLink = 'https://www.anthropic.com/' + post.directories[0].value + '/' + post.slug.current;
+                        items.push({
+                            pubDate,
+                            link: postLink,
+                            description: post.summary,
+                            title: post.title,
+                            image: post.cardPhoto?.url || post.illustration?.url,
+                        });
                     }
                 }
             }
