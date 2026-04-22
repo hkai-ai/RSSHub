@@ -2,9 +2,9 @@ import { load } from 'cheerio';
 
 import { config } from '@/config';
 import type { Route } from '@/types';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import cache from '@/utils/cache';
 import logger from '@/utils/logger';
-import ofetch from '@/utils/ofetch';
 
 export const route: Route = {
     path: '/resource/:category?',
@@ -32,7 +32,7 @@ export const route: Route = {
             url,
             async () => {
                 try {
-                    const response = await ofetch(url, {
+                    const response = await fetchHtmlWithFallback(url, {
                         headers: {
                             'User-Agent': config.ua,
                         },
@@ -106,7 +106,7 @@ export const route: Route = {
                                     `capcut:article:${item.link}`,
                                     async () => {
                                         try {
-                                            const articleResponse = await ofetch(item.link, {
+                                            const articleResponse = await fetchHtmlWithFallback(item.link, {
                                                 headers: {
                                                     'User-Agent': config.ua,
                                                 },

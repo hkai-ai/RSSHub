@@ -1,9 +1,9 @@
 import { load } from 'cheerio';
 
 import type { Route } from '@/types';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import cache from '@/utils/cache';
 import logger from '@/utils/logger';
-import ofetch from '@/utils/ofetch';
 import { parseDate } from '@/utils/parse-date';
 
 export const route: Route = {
@@ -21,7 +21,7 @@ export const route: Route = {
         return await cache.tryGet(
             currentUrl,
             async () => {
-                const response = await ofetch(currentUrl);
+                const response = await fetchHtmlWithFallback(currentUrl);
                 const $ = load(response);
 
                 const title = $('title').text() || 'ElevenLabs Blog';
@@ -114,7 +114,7 @@ export const route: Route = {
                             // If no pubDate, fetch from article page
                             if (!item.pubDate) {
                                 try {
-                                    const articleResponse = await ofetch(item.link);
+                                    const articleResponse = await fetchHtmlWithFallback(item.link);
                                     const $article = load(articleResponse);
 
                                     // Try to find date in structured data

@@ -1,7 +1,7 @@
 import { load } from 'cheerio';
 
 import type { Route } from '@/types';
-import ofetch from '@/utils/ofetch';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import { parseDate } from '@/utils/parse-date';
 import timezone from '@/utils/timezone';
 
@@ -32,7 +32,7 @@ export const route: Route = {
         const section = ctx.req.param('section') || 'china_news';
         const url = `https://autonews.gasgoo.com/${section}`;
 
-        const html = await ofetch(url);
+        const html = await fetchHtmlWithFallback(url);
         const $ = load(html);
 
         const items = $('.newsListShow ul li')

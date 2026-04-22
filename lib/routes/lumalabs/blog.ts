@@ -1,7 +1,7 @@
 import { load } from 'cheerio';
 
 import type { Route } from '@/types';
-import got from '@/utils/got';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import { parseDate } from '@/utils/parse-date';
 
 export const route: Route = {
@@ -33,8 +33,8 @@ async function handler(ctx) {
     const baseUrl = 'https://lumalabs.ai';
     const url = `${baseUrl}/blog/${category}`;
 
-    const response = await got(url);
-    const $ = load(response.data);
+    const response = await fetchHtmlWithFallback(url);
+    const $ = load(response);
 
     // Extract articles from the grid container
     const articles = $(String.raw`.mx-auto.grid.w-full.grid-cols-1.gap-6.md\:grid-cols-2.lg\:grid-cols-3 > div`)

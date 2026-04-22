@@ -4,6 +4,7 @@ import puppeteer from 'rebrowser-puppeteer';
 
 import { config } from '@/config';
 
+import { type BrowserCrawlerOptions, fetchHtmlByBrowserCrawler, isValidContent } from './browser-crawler';
 import logger from './logger';
 import proxy from './proxy';
 
@@ -192,4 +193,67 @@ export const getPuppeteerPage = async (
         },
         browser,
     };
+};
+
+/**
+ * 仅消费 HTML 的场景下，统一的「本地 puppeteer → 第三方 BrowserCrawler」降级入口。
+ *
+ * 执行顺序：
+ *   1. 本地 puppeteer（复用 {@link getPuppeteerPage}）；
+ *   2. 第三方服务 headless 端点；
+ *   3. 第三方服务 chrome-remote 端点。
+ *
+ * 任一步骤拿到「有效内容」（非空、非 Cloudflare / DataDome 拦截页）即返回；本地步骤
+ * 抛错或内容无效时静默降级。全部失败时抛出最后一次真实错误。
+ *
+ * 需要 Page 交互（`page.evaluate` / `newPage` / 请求拦截等）的 route 请继续使用
+ * {@link getPuppeteerPage}；此函数仅用于「拿到 HTML 后交给 cheerio」的场景。
+ *
+ * @param url 目标页面 URL。
+ * @param options 本地 puppeteer 与第三方服务共享的选项；`fallbackOptions` 仅透传给
+ *   第三方服务（如 `validationRule`、`isBanResourceRequest` 等）。
+ * @returns 抓到的 HTML 字符串。
+ * @throws 本地 puppeteer 与第三方服务全部失败时抛 Error。
+ */
+export const getPageHtml = async (
+    url: string,
+    options: {
+        /** 传入本地 puppeteer 的 onBeforeLoad 钩子。 */
+        onBeforeLoad?: (page: Page, browser?: Browser) => Promise<void> | void;
+        /** 本地 puppeteer goto 的 waitUntil 配置。 */
+        gotoConfig?: {
+            waitUntil?: 'load' | 'domcontentloaded' | 'networkidle0' | 'networkidle2';
+        };
+        /**
+         * 本地 puppeteer 拿到 HTML 之前可执行的自定义动作（如 `waitForSelector`）。
+         * 返回 HTML 字符串则直接使用；返回 void 则由 helper 调用 `page.content()`。
+         */
+        prepare?: (page: Page, browser: Browser) => Promise<string | void>;
+        /** 传给第三方 BrowserCrawler 的附加选项。 */
+        fallbackOptions?: Omit<BrowserCrawlerOptions, 'url'>;
+    } = {}
+): Promise<string> => {
+    try {
+        const { page, destory, browser } = await getPuppeteerPage(url, {
+            onBeforeLoad: options.onBeforeLoad,
+            gotoConfig: options.gotoConfig,
+        });
+        try {
+            const prepared = options.prepare ? await options.prepare(page, browser) : undefined;
+            const html = prepared ?? (await page.content());
+            if (isValidContent(html)) {
+                return html;
+            }
+            logger.warn(`[getPageHtml] 本地 puppeteer 返回内容无效或疑似反爬拦截页，降级到第三方服务：${url}`);
+        } finally {
+            await destory();
+        }
+    } catch (error) {
+        logger.warn(`[getPageHtml] 本地 puppeteer 抓取失败，降级到第三方服务：${url} - ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    return await fetchHtmlByBrowserCrawler({
+        url,
+        ...options.fallbackOptions,
+    });
 };

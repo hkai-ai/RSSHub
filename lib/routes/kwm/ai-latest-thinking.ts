@@ -3,7 +3,7 @@ import { load } from 'cheerio';
 import type { Route } from '@/types';
 import cache from '@/utils/cache';
 import { parseDate } from '@/utils/parse-date';
-import { getPuppeteerPage } from '@/utils/puppeteer';
+import { getPageHtml } from '@/utils/puppeteer';
 
 export const route: Route = {
     path: '/ai-latest-thinking',
@@ -36,14 +36,16 @@ async function handler() {
     return await cache.tryGet(
         currentUrl,
         async () => {
-            const { page, destory } = await getPuppeteerPage(currentUrl, {
+            const html = await getPageHtml(currentUrl, {
                 gotoConfig: { waitUntil: 'domcontentloaded' },
+                prepare: async (page) => {
+                    await page.waitForSelector('.article-item', { timeout: 30_000 });
+                },
+                fallbackOptions: {
+                    waitUntil: 'networkidle',
+                    isBanResourceRequest: true,
+                },
             });
-
-            await page.waitForSelector('.article-item', { timeout: 30000 });
-
-            const html = await page.content();
-            await destory();
 
             const $ = load(html);
 

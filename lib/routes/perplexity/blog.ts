@@ -3,9 +3,10 @@ import type { Context } from 'hono';
 
 import type { Data, DataItem, Route } from '@/types';
 import { ViewType } from '@/types';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import cache from '@/utils/cache';
 import { parseDate } from '@/utils/parse-date';
-import { getPuppeteerPage } from '@/utils/puppeteer';
+import { getPageHtml } from '@/utils/puppeteer';
 
 export const route: Route = {
     path: '/blog',
@@ -38,16 +39,18 @@ async function handler(ctx: Context) {
     const limit = Number.parseInt(ctx.req.query('limit') ?? '20', 10);
     const rootUrl = 'https://www.perplexity.ai/hub';
 
-    const { page, destory, browser } = await getPuppeteerPage(rootUrl, {
+    const html = await getPageHtml(rootUrl, {
         onBeforeLoad: async (page) => {
             await page.setRequestInterception(true);
             page.on('request', (request) => {
                 request.resourceType() === 'document' ? request.continue() : request.abort();
             });
         },
+        fallbackOptions: {
+            waitUntil: 'networkidle',
+            isBanResourceRequest: true,
+        },
     });
-
-    const html = await page.evaluate(() => document.documentElement.innerHTML);
     const $ = load(html);
 
     const items: DataItem[] = [];
@@ -112,17 +115,7 @@ async function handler(ctx: Context) {
             }
 
             return (await cache.tryGet(item.link, async () => {
-                const contentPage = await browser.newPage();
-
-                await contentPage.setRequestInterception(true);
-                contentPage.on('request', (request) => {
-                    request.resourceType() === 'document' ? request.continue() : request.abort();
-                });
-
-                await contentPage.goto(item.link!, { waitUntil: 'domcontentloaded' });
-
-                const contentHtml = await contentPage.evaluate(() => document.documentElement.innerHTML);
-                await contentPage.close();
+                const contentHtml = await fetchHtmlWithFallback(item.link!);
 
                 const $content = load(contentHtml);
 
@@ -147,8 +140,6 @@ async function handler(ctx: Context) {
             })) as DataItem;
         })
     );
-
-    await destory();
 
     return {
         title: 'Perplexity Blog',

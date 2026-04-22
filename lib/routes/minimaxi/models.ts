@@ -1,7 +1,7 @@
 import { load } from 'cheerio';
-import { ofetch } from 'ofetch';
 
 import type { Route } from '@/types';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import cache from '@/utils/cache';
 import { parseDate } from '@/utils/parse-date';
 import timezone from '@/utils/timezone';
@@ -33,7 +33,7 @@ export const route: Route = {
         return await cache.tryGet(
             baseUrl,
             async () => {
-                const response = await ofetch(baseUrl);
+                const response = await fetchHtmlWithFallback(baseUrl);
 
                 const $ = load(response);
 

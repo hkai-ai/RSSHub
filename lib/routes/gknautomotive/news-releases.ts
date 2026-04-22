@@ -1,7 +1,9 @@
 import { load } from 'cheerio';
 
 import type { DataItem, Route } from '@/types';
+import { fetchHtmlByBrowserCrawler, isValidContent } from '@/utils/browser-crawler';
 import { unlockWebsite } from '@/utils/bright-data-unlocker';
+import logger from '@/utils/logger';
 import { parseDate } from '@/utils/parse-date';
 import timezone from '@/utils/timezone';
 
@@ -33,7 +35,26 @@ export const route: Route = {
         const baseUrl = 'https://www.gknautomotive.com';
         const url = `${baseUrl}/en/news-and-Insights/news-releases/`;
 
-        const html = await unlockWebsite(url);
+        let html: string | null = null;
+        try {
+            const unlocked = await unlockWebsite(url);
+            if (isValidContent(unlocked)) {
+                html = unlocked;
+            } else {
+                logger.warn(`[gknautomotive] Bright Data 返回内容无效，降级到第三方浏览器服务`);
+            }
+        } catch (error) {
+            logger.warn(`[gknautomotive] Bright Data unlock 失败，降级到第三方浏览器服务：${error instanceof Error ? error.message : String(error)}`);
+        }
+
+        if (!html) {
+            html = await fetchHtmlByBrowserCrawler({
+                url,
+                waitUntil: 'networkidle',
+                isBanResourceRequest: true,
+            });
+        }
+
         const $ = load(html);
 
         const items: DataItem[] = [];

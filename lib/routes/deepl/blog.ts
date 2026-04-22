@@ -5,8 +5,8 @@ import type { Context } from 'hono';
 
 import type { Data, DataItem, Route } from '@/types';
 import { ViewType } from '@/types';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import cache from '@/utils/cache';
-import ofetch from '@/utils/ofetch';
 import { parseDate } from '@/utils/parse-date';
 
 import { renderDescription } from './templates/description';
@@ -18,7 +18,7 @@ export const handler = async (ctx: Context): Promise<Data> => {
     const baseUrl = 'https://www.deepl.com';
     const targetUrl: string = new URL(`${lang}/blog`, baseUrl).href;
 
-    const response = await ofetch(targetUrl);
+    const response = await fetchHtmlWithFallback(targetUrl);
     const $: CheerioAPI = load(response);
     const language = $('html').attr('lang') ?? lang;
 
@@ -77,7 +77,7 @@ export const handler = async (ctx: Context): Promise<Data> => {
             }
 
             return cache.tryGet(item.link, async (): Promise<DataItem> => {
-                const detailResponse = await ofetch(item.link);
+                const detailResponse = await fetchHtmlWithFallback(item.link);
                 const $$: CheerioAPI = load(detailResponse);
 
                 const title: string = $$('h1[data-contentful-field-id="title"]').text();

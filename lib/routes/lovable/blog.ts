@@ -2,8 +2,8 @@ import { load } from 'cheerio';
 
 import { config } from '@/config';
 import type { Route } from '@/types';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import logger from '@/utils/logger';
-import ofetch from '@/utils/ofetch';
 
 const handler = async () => {
     const baseUrl = 'https://lovable.dev';
@@ -11,7 +11,7 @@ const handler = async () => {
 
     let html: string;
     try {
-        html = await ofetch(targetUrl, {
+        html = await fetchHtmlWithFallback(targetUrl, {
             headers: {
                 'User-Agent': config.ua,
             },

@@ -2,7 +2,7 @@ import { load } from 'cheerio';
 
 import { config } from '@/config';
 import type { Route } from '@/types';
-import got from '@/utils/got';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import { parseDate } from '@/utils/parse-date';
 
 export const route: Route = {
@@ -27,7 +27,7 @@ export const route: Route = {
 async function handler() {
     const rootUrl = 'https://www.lexisnexis.com';
     const currentUrl = `${rootUrl}/community/insights`;
-    const { data: response } = await got(currentUrl, {
+    const response = await fetchHtmlWithFallback(currentUrl, {
         headers: {
             'User-Agent': config.ua,
         },

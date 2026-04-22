@@ -4,7 +4,7 @@ import type { Context } from 'hono';
 import type { Route } from '@/types';
 import cache from '@/utils/cache';
 import { parseDate } from '@/utils/parse-date';
-import { getPuppeteerPage } from '@/utils/puppeteer';
+import { getPageHtml } from '@/utils/puppeteer';
 
 export const route: Route = {
     path: '/news/:lang?',
@@ -41,59 +41,57 @@ async function handler(ctx: Context) {
     return await cache.tryGet(
         currentUrl,
         async () => {
-            const { page, destory } = await getPuppeteerPage(currentUrl, {
+            const html = await getPageHtml(currentUrl, {
                 gotoConfig: {
                     waitUntil: 'networkidle2',
                 },
+                prepare: async (page) => {
+                    await page.waitForSelector('article', { timeout: 30_000 });
+                },
+                fallbackOptions: {
+                    waitUntil: 'networkidle',
+                    isBanResourceRequest: true,
+                },
             });
+            const $ = load(html);
 
-            try {
-                // Wait for articles to load
-                await page.waitForSelector('article', { timeout: 30000 });
+            // Parse article elements directly
+            const articles = $('article').toArray();
 
-                const html = await page.content();
-                const $ = load(html);
+            const items = articles.slice(0, 20).map((articleElement) => {
+                const $article = $(articleElement);
 
-                // Parse article elements directly
-                const articles = $('article').toArray();
+                // Extract data from article structure
+                const title = $article.find('h2').text().trim();
+                const description = $article.find('p.text-secondary-foreground').text().trim();
+                const category = $article.find('div.bg-foreground').text().trim();
+                const dateText = $article.find('time').text().trim();
+                const imageUrl = $article.find('img').attr('src');
 
-                const items = articles.slice(0, 20).map((articleElement) => {
-                    const $article = $(articleElement);
-
-                    // Extract data from article structure
-                    const title = $article.find('h2').text().trim();
-                    const description = $article.find('p.text-secondary-foreground').text().trim();
-                    const category = $article.find('div.bg-foreground').text().trim();
-                    const dateText = $article.find('time').text().trim();
-                    const imageUrl = $article.find('img').attr('src');
-
-                    // Find the parent link for this article
-                    const parentLink = $article.parent().attr('href');
-                    const link = parentLink ? `${rootUrl}${parentLink}` : '';
-                    const pubDate = parseDate(dateText, 'MMMM D, YYYY', 'en');
-
-                    return {
-                        title,
-                        link,
-                        description,
-                        pubDate,
-                        category: category ? [category] : undefined,
-                        image: imageUrl || undefined,
-                    };
-                });
-
-                // Filter out items without titles (in case parsing failed)
-                const validItems = items.filter((item) => item.title);
+                // Find the parent link for this article
+                const parentLink = $article.parent().attr('href');
+                const link = parentLink ? `${rootUrl}${parentLink}` : '';
+                const pubDate = parseDate(dateText, 'MMMM D, YYYY', 'en');
 
                 return {
-                    title: 'Lovart Official News',
-                    link: currentUrl,
-                    description: 'Lovart AI Design Tool Official News - Latest product releases, feature updates, and industry insights',
-                    item: validItems,
+                    title,
+                    link,
+                    description,
+                    pubDate,
+                    category: category ? [category] : undefined,
+                    image: imageUrl || undefined,
                 };
-            } finally {
-                await destory();
-            }
+            });
+
+            // Filter out items without titles (in case parsing failed)
+            const validItems = items.filter((item) => item.title);
+
+            return {
+                title: 'Lovart Official News',
+                link: currentUrl,
+                description: 'Lovart AI Design Tool Official News - Latest product releases, feature updates, and industry insights',
+                item: validItems,
+            };
         },
         3600,
         false

@@ -3,7 +3,7 @@ import type { Context } from 'hono';
 
 import type { Data, Route } from '@/types';
 import { ViewType } from '@/types';
-import ofetch from '@/utils/ofetch';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import { parseDate } from '@/utils/parse-date';
 
 export const handler = async (ctx: Context): Promise<Data> => {
@@ -16,7 +16,7 @@ export const handler = async (ctx: Context): Promise<Data> => {
     const path = normalizedTopic ? `${localeSegment}/blog/topic/${normalizedTopic}` : `${localeSegment}/blog`;
     const targetUrl = new URL(path, baseUrl).href;
 
-    const html = await ofetch(targetUrl);
+    const html = await fetchHtmlWithFallback(targetUrl);
     const $ = load(html);
 
     const main = $('#main').last(); // there are two main tags before hydration

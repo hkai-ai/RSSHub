@@ -1,8 +1,8 @@
 import { load } from 'cheerio';
 
 import type { Route } from '@/types';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import logger from '@/utils/logger';
-import ofetch from '@/utils/ofetch';
 import { parseDate } from '@/utils/parse-date';
 import timezone from '@/utils/timezone';
 
@@ -30,7 +30,7 @@ export const route: Route = {
         const url = 'https://e.nyse.com/mac-desk-weekly-recap';
 
         try {
-            const html = await ofetch(url);
+            const html = await fetchHtmlWithFallback(url);
             const $ = load(html);
 
             let pubDate: Date | undefined;

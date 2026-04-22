@@ -1,8 +1,8 @@
 import { load } from 'cheerio';
 
 import type { Route } from '@/types';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import cache from '@/utils/cache';
-import got from '@/utils/got';
 import { parseDate } from '@/utils/parse-date';
 import timezone from '@/utils/timezone';
 
@@ -37,7 +37,7 @@ async function handler(ctx) {
     const rootUrl = 'https://www.gov.cn';
     const currentUrl = new URL(`zhengce/${category.replace(/\/$/, '')}/`, rootUrl).href;
 
-    const { data: response } = await got(currentUrl);
+    const response = await fetchHtmlWithFallback(currentUrl);
 
     const $ = load(response);
 
@@ -60,7 +60,7 @@ async function handler(ctx) {
             .slice(0, limit)
             .map((item) =>
                 cache.tryGet(item.link, async () => {
-                    const { data: detailResponse } = await got(item.link);
+                    const detailResponse = await fetchHtmlWithFallback(item.link);
 
                     const content = load(detailResponse);
 

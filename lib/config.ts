@@ -11,6 +11,7 @@ type ConfigEnvKeys =
     | 'PUPPETEER_REAL_BROWSER_SERVICE'
     | 'PUPPETEER_WS_ENDPOINT'
     | 'CHROMIUM_EXECUTABLE_PATH'
+    | 'BROWSER_CRAWLER_BASE_URL'
     // Network
     | 'PORT'
     | 'LISTEN_INADDR_ANY'
@@ -255,6 +256,16 @@ export type Config = {
     puppeteerRealBrowserService?: string;
     puppeteerWSEndpoint?: string;
     chromiumExecutablePath?: string;
+    /**
+     * 第三方浏览器爬取服务配置。
+     *
+     * 当本地 puppeteer 抓取失败或被反爬拦截时，会按顺序降级到
+     * `${baseUrl}/api/browser`（headless）和 `${baseUrl}/api/chrome-remote`
+     * （chrome-remote）两个端点继续尝试。
+     */
+    browserCrawler: {
+        baseUrl: string;
+    };
     // network
     connect: {
         port: number;
@@ -744,6 +755,9 @@ const calculateValue = () => {
         puppeteerRealBrowserService: envs.PUPPETEER_REAL_BROWSER_SERVICE,
         puppeteerWSEndpoint: envs.PUPPETEER_WS_ENDPOINT,
         chromiumExecutablePath: envs.CHROMIUM_EXECUTABLE_PATH,
+        browserCrawler: {
+            baseUrl: envs.BROWSER_CRAWLER_BASE_URL || 'http://api.newsdiy.cn:7005',
+        },
         // network
         connect: {
             port: toInt(envs.PORT, 1200), // 监听端口

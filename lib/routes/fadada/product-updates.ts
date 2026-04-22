@@ -3,7 +3,7 @@ import { URL } from 'node:url';
 import { load } from 'cheerio';
 
 import type { Route } from '@/types';
-import ofetch from '@/utils/ofetch';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import { parseDate } from '@/utils/parse-date';
 import timezone from '@/utils/timezone';
 
@@ -31,7 +31,7 @@ export const route: Route = {
         const url = 'https://support.fadada.com/d/1638785527073222657.html';
 
         try {
-            const response = await ofetch(url);
+            const response = await fetchHtmlWithFallback(url);
             const $ = load(response);
 
             const items: Array<{

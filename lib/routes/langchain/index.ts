@@ -1,8 +1,8 @@
 import { load } from 'cheerio';
 
 import type { DataItem, Route } from '@/types';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import cache from '@/utils/cache';
-import got from '@/utils/got';
 
 export const route: Route = {
     path: '/blog',
@@ -24,8 +24,8 @@ async function handler() {
     const rootUrl = 'https://blog.langchain.dev';
     const currentUrl = rootUrl;
 
-    const response = await got(currentUrl);
-    const $ = load(response.data);
+    const response = await fetchHtmlWithFallback(currentUrl);
+    const $ = load(response);
 
     const items = await Promise.all(
         $('.posts-feed .post-card')
@@ -54,8 +54,8 @@ async function handler() {
             .map((item) =>
                 cache.tryGet(item.link as string, async () => {
                     try {
-                        const detailResponse = await got(item.link);
-                        const $detail = load(detailResponse.data);
+                        const detailResponse = await fetchHtmlWithFallback(item.link as string);
+                        const $detail = load(detailResponse);
 
                         item.description = $detail('.article-content').html() || item.description;
 

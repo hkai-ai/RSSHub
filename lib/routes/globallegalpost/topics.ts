@@ -1,8 +1,8 @@
 import { load } from 'cheerio';
 
 import type { Route } from '@/types';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import cache from '@/utils/cache';
-import ofetch from '@/utils/ofetch';
 
 export const route: Route = {
     path: '/topics/:topic',
@@ -36,7 +36,7 @@ async function handler(ctx) {
     const response = await cache.tryGet(
         `globallegalpost:topics:${topic}`,
         async () =>
-            await ofetch(url, {
+            await fetchHtmlWithFallback(url, {
                 headers: {
                     'User-Agent': 'RSSHUB/1.0',
                 },
