@@ -76,15 +76,17 @@ export const errorHandler: ErrorHandler = (error, ctx) => {
     /**
      * 记录路由失败到追踪器：
      * - 跳过 RequestInProgressError：它是缓存竞态保护，不代表上游真正失败。
+     * - 跳过 RejectError：路由主动拒绝（反爬命中、内容不合规、参数被显式拒绝等），
+     *   属于业务层面的预期分支，不应被当作"路由坏掉"上报。
      * - 跳过非路由请求（首页、静态资源、内部 API、健康检查、metrics）。
      * - 包含 404：用户错路径也是值得提醒的失败信号。
      * 整段 try/catch，追踪自身任何异常都不能影响错误响应主流程。
      */
-    if (error.constructor.name !== 'RequestInProgressError' && !UNTRACKED_PATHS.has(requestPath) && !requestPath.startsWith('/api/')) {
+    if (error.constructor.name !== 'RequestInProgressError' && error.constructor.name !== 'RejectError' && !UNTRACKED_PATHS.has(requestPath) && !requestPath.startsWith('/api/')) {
         try {
             const url = ctx.req.url ?? '';
             const qIdx = url.indexOf('?');
-            const fullPath = qIdx !== -1 ? requestPath + url.slice(qIdx) : requestPath;
+            const fullPath = qIdx === -1 ? requestPath : requestPath + url.slice(qIdx);
             recordFailure({
                 requestPath: fullPath,
                 routePath: hasMatchedRoute ? matchedRoute : null,
