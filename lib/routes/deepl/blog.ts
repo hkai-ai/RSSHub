@@ -17,20 +17,42 @@ export const handler = async (ctx: Context): Promise<Data> => {
 
     const baseUrl = 'https://www.deepl.com';
     const targetUrl: string = new URL(`${lang}/blog`, baseUrl).href;
+    // DeepL 会拒绝默认 Node fetch UA，必须显式带常见浏览器 UA 才会返回正常 HTML，
+    // 否则会触发 fetchHtmlWithFallback 走第三方降级，慢且不稳定。
+    const browserHeaders: Record<string, string> = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'accept-language': 'en-US,en;q=0.9',
+    };
 
-    const response = await fetchHtmlWithFallback(targetUrl);
+    const response = await fetchHtmlWithFallback(targetUrl, { headers: browserHeaders });
     const $: CheerioAPI = load(response);
     const language = $('html').attr('lang') ?? lang;
 
-    let items: DataItem[] = $('h4, h6')
-        .slice(0, limit)
-        .toArray()
-        .map((el): Element => {
-            const $el: Cheerio<Element> = $(el).parent().parent();
+    // DeepL 改版后列表卡片不再以 <a> 包裹，标题 h4/h6 的两层父级是普通 div，
+    // 文章链接放在该 div 内的 a[href*="/blog/"]，因此原先 `$el.attr('href')`
+    // 的写法只能拿到 undefined，导致整条 RSS 的 link 全部为空。
+    // 这里改为：以 h4/h6 标题为锚点，向上两层取卡片容器，再从容器内取链接、
+    // 时间、图片、作者，并过滤栏目页（如 /en/blog/tech）。
+    const isHubPath = (href: string): boolean => /^\/[a-z-]+\/blog\/?$/i.test(href) || /^\/[a-z-]+\/blog\/(tech|business|enterprise)\/?$/i.test(href);
 
-            const title: string = $el.find('h4, h6').text();
-            const image: string | undefined = $el.find('img').attr('src');
-            const description: string | undefined = renderDescription({
+    let items: DataItem[] = $('h4, h6')
+        .toArray()
+        .map((el): DataItem | null => {
+            const $title: Cheerio<Element> = $(el);
+            const title: string = $title.text().trim();
+            if (!title) {
+                return null;
+            }
+
+            const $card: Cheerio<Element> = $title.parent().parent();
+            const linkUrl: string | undefined = $card.find('a[href*="/blog/"]').first().attr('href');
+            if (!linkUrl || isHubPath(linkUrl)) {
+                return null;
+            }
+
+            const image: string | undefined = $card.find('img').first().attr('src');
+            const intro: string = $card.find('p').first().text().trim();
+            const description: string = renderDescription({
                 images: image
                     ? [
                           {
@@ -39,23 +61,21 @@ export const handler = async (ctx: Context): Promise<Data> => {
                           },
                       ]
                     : undefined,
-                intro: $el.find('p').text(),
+                intro,
             });
-            const pubDateStr: string | undefined = $el.find('time').attr('datetime');
-            const linkUrl: string | undefined = $el.attr('href');
-            const authorsArr: string[] = $el.find('span.me-6 span').last().text().split(/,\s/);
+            const pubDateStr: string | undefined = $card.find('time').first().attr('datetime');
+            const authorsArr: string[] = $card.find('span.me-6 span').last().text().split(/,\s/).filter(Boolean);
             const authors: DataItem['author'] = authorsArr.map((author) => ({
                 name: author,
                 url: undefined,
                 avatar: undefined,
             }));
-            const upDatedStr: string | undefined = pubDateStr;
 
-            const processedItem: DataItem = {
+            return {
                 title,
                 description,
                 pubDate: pubDateStr ? parseDate(pubDateStr) : undefined,
-                link: linkUrl ? new URL(linkUrl, baseUrl).href : undefined,
+                link: new URL(linkUrl, baseUrl).href,
                 author: authors,
                 content: {
                     html: description,
@@ -63,12 +83,12 @@ export const handler = async (ctx: Context): Promise<Data> => {
                 },
                 image,
                 banner: image,
-                updated: upDatedStr ? parseDate(upDatedStr) : undefined,
+                updated: pubDateStr ? parseDate(pubDateStr) : undefined,
                 language,
             };
-
-            return processedItem;
-        });
+        })
+        .filter((item): item is DataItem => item !== null)
+        .slice(0, limit);
 
     items = await Promise.all(
         items.map((item) => {
@@ -77,44 +97,51 @@ export const handler = async (ctx: Context): Promise<Data> => {
             }
 
             return cache.tryGet(item.link, async (): Promise<DataItem> => {
-                const detailResponse = await fetchHtmlWithFallback(item.link);
-                const $$: CheerioAPI = load(detailResponse);
+                try {
+                    const detailResponse = await fetchHtmlWithFallback(item.link!, { headers: browserHeaders });
+                    const $$: CheerioAPI = load(detailResponse);
 
-                const title: string = $$('h1[data-contentful-field-id="title"]').text();
-                const description: string | undefined =
-                    item.description +
-                    renderDescription({
-                        description: $$('div.my-redesign-3').html(),
-                    });
-                const pubDateStr: string | undefined = $$('time').first().attr('datetime');
-                const authorsArr: string[] = $$('span[data-contentful-field-id="author"] span').last().text().split(/,\s/);
-                const authors: DataItem['author'] = authorsArr.map((author) => ({
-                    name: author,
-                    url: undefined,
-                    avatar: undefined,
-                }));
-                const image: string | undefined = $$('meta[property="og:image"]').attr('content') ?? $$('picture[data-contentful-field-id="image"] img').attr('src');
-                const upDatedStr: string | undefined = pubDateStr;
+                    const detailTitle: string = $$('h1[data-contentful-field-id="title"]').text().trim();
+                    // 正文：优先用 Contentful 字段定位，旧的 `div.my-redesign-3` 仍保留为兜底。
+                    const bodyHtml: string | null = $$('[data-contentful-field-id="text"]').html() ?? $$('div.my-redesign-3').html();
+                    const description: string =
+                        (item.description ?? '') +
+                        (bodyHtml
+                            ? renderDescription({
+                                  description: bodyHtml,
+                              })
+                            : '');
+                    const pubDateStr: string | undefined = $$('time').first().attr('datetime');
+                    // 作者文本通常形如 `By Alice, Bob`，需要去掉 `By ` 前缀。
+                    const authorsArr: string[] = $$('span[data-contentful-field-id="author"]')
+                        .first()
+                        .text()
+                        .replace(/^\s*By\s+/i, '')
+                        .split(/,\s*/)
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                    const authors: DataItem['author'] = authorsArr.length > 0 ? authorsArr.map((author) => ({ name: author, url: undefined, avatar: undefined })) : item.author;
+                    const image: string | undefined = $$('meta[property="og:image"]').attr('content') ?? $$('picture[data-contentful-field-id="image"] img').attr('src') ?? item.image;
 
-                const processedItem: DataItem = {
-                    title,
-                    description,
-                    pubDate: pubDateStr ? parseDate(pubDateStr) : item.pubDate,
-                    author: authors,
-                    content: {
-                        html: description,
-                        text: description,
-                    },
-                    image,
-                    banner: image,
-                    updated: upDatedStr ? parseDate(upDatedStr) : item.updated,
-                    language,
-                };
-
-                return {
-                    ...item,
-                    ...processedItem,
-                };
+                    return {
+                        ...item,
+                        title: detailTitle || item.title,
+                        description,
+                        pubDate: pubDateStr ? parseDate(pubDateStr) : item.pubDate,
+                        author: authors,
+                        content: {
+                            html: description,
+                            text: description,
+                        },
+                        image,
+                        banner: image,
+                        updated: pubDateStr ? parseDate(pubDateStr) : item.updated,
+                        language,
+                    };
+                } catch {
+                    // 详情页抓取失败时退化为列表页字段，避免单条详情失败拖垮整条 feed。
+                    return item;
+                }
             });
         })
     );

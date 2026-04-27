@@ -1,7 +1,7 @@
 import { load } from 'cheerio';
 import type { Context } from 'hono';
 
-import type { Data, Route } from '@/types';
+import type { Data, DataItem, Route } from '@/types';
 import { ViewType } from '@/types';
 import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import { parseDate } from '@/utils/parse-date';
@@ -20,28 +20,43 @@ export const handler = async (ctx: Context): Promise<Data> => {
     const $ = load(html);
 
     const main = $('#main').last(); // there are two main tags before hydration
-    const items = main
+    const items: DataItem[] = main
         .find('article')
-        .slice(0, limit)
         .toArray()
-        .map((el) => {
+        .map((el): DataItem | null => {
             const $el = $(el);
-            const $link = $el.find('a').first();
-
-            const title = $link.find('p').first().text().trim();
-            const description = $link.find('p').eq(1).text().trim();
-            const pubDate = parseDate($el.find('time').first().attr('datetime')!.trim());
-
+            // Cursor 改版后卡片有两种结构：
+            //   1) Featured：article 内含 a 链接（早期版式）
+            //   2) Standard / 客户故事：a 在 article 外层（<a><article/></a>）
+            // 同时 "In the Press" / 视频 / changelog 区块的 article 链接是站外或非
+            // 博客路径，需要过滤掉以避免污染 RSS。
+            const innerLink = $el.find('a[href]').first();
+            const $link = innerLink.length ? innerLink : $el.parent('a[href]');
             const href = $link.attr('href');
-            const link = href ? new URL(href, baseUrl).href : undefined;
+
+            if (!href || /^https?:/i.test(href) || !/\/blog\/[^/]/.test(href)) {
+                return null;
+            }
+
+            const ps = $el.find('p');
+            const title = ps.first().text().trim();
+            if (!title) {
+                return null;
+            }
+            const description = ps.eq(1).text().trim();
+
+            const datetime = $el.find('time').first().attr('datetime');
+            const pubDate = datetime ? parseDate(datetime.trim()) : undefined;
 
             return {
                 title,
                 description,
                 pubDate,
-                link,
+                link: new URL(href, baseUrl).href,
             };
-        });
+        })
+        .filter((item): item is DataItem => item !== null)
+        .slice(0, limit);
 
     return {
         title: $('title').text() || 'Cursor Blog',
