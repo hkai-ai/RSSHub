@@ -5,6 +5,7 @@ import { config } from '@/config';
 import RequestInProgressError from '@/errors/types/request-in-progress';
 import type { Data } from '@/types';
 import cacheModule from '@/utils/cache/index';
+import { clearFailure } from '@/utils/failure-tracker';
 
 const bypassList = new Set(['/', '/robots.txt', '/logo.png', '/favicon.ico']);
 // only give cache string, as the `!` condition tricky
@@ -73,6 +74,17 @@ const middleware: MiddlewareHandler = async (ctx, next) => {
         ctx.set('data', data);
         const body = JSON.stringify(data);
         await cacheModule.globalCache.set(key, body, config.cache.routeExpire);
+        /**
+         * 路由成功生成 RSS 后清除该 path 的失败记录。fire-and-forget，
+         * 不阻塞响应，且失败也不影响主流程。
+         */
+        try {
+            const url = ctx.req.url ?? '';
+            const qIdx = url.indexOf('?');
+            clearFailure(qIdx !== -1 ? requestPath + url.slice(qIdx) : requestPath);
+        } catch {
+            // 静默忽略：清除失败不影响响应
+        }
     }
 
     // We need to let it go, even no cache set.
