@@ -9,9 +9,9 @@ export const route: Route = {
     path: '/autonews/:section?',
     name: '汽车新闻',
     categories: ['new-media'],
-    example: '/gasgoo/autonews/china_news',
+    example: '/gasgoo/autonews/market-industry',
     parameters: {
-        section: '板块名称，默认为 china_news，可在 URL 中找到，如 china_news、europe_news 等',
+        section: '板块名称，默认为 market-industry。新版站点改用 /articles/<slug> 形式，旧 china_news/europe_news 仍兼容映射到 market-industry。',
     },
     features: {
         requireConfig: false,
@@ -23,50 +23,76 @@ export const route: Route = {
     },
     radar: [
         {
-            source: ['autonews.gasgoo.com/:section'],
+            source: ['autonews.gasgoo.com/articles/:section', 'autonews.gasgoo.com/:section'],
             target: '/autonews/:section',
         },
     ],
     maintainers: ['claude'],
     handler: async (ctx) => {
-        const section = ctx.req.param('section') || 'china_news';
-        const url = `https://autonews.gasgoo.com/${section}`;
+        const rawSection = ctx.req.param('section') || 'market-industry';
+        // 旧的 china_news 已被合并为 market-industry，做兼容映射
+        const sectionMap: Record<string, string> = {
+            china_news: 'market-industry',
+            europe_news: 'market-industry',
+        };
+        const section = sectionMap[rawSection] || rawSection;
+        const url = `https://autonews.gasgoo.com/articles/${section}`;
 
         const html = await fetchHtmlWithFallback(url);
         const $ = load(html);
 
-        const items = $('.newsListShow ul li')
+        const seen = new Set<string>();
+        const items = $(`a[href^="/articles/${section}/"]`)
             .toArray()
             .map((element) => {
-                const $element = $(element);
-                const $link = $element.find('a').first();
-                const $dd = $link.find('dd');
+                const $a = $(element);
+                const href = $a.attr('href') || '';
+                if (!/\/articles\/[^/]+\/[a-z0-9-]+(?:-\d+)?$/i.test(href)) {
+                    return null;
+                }
+                const link = href.startsWith('http') ? href : `https://autonews.gasgoo.com${href}`;
+                if (seen.has(link)) {
+                    return null;
+                }
+                seen.add(link);
 
-                const link = $link.attr('href') || '';
-                const title = $dd.find('b').text().trim();
-                const description = $dd.find('p').first().text().trim();
-                const dateText = $dd.find('span p').text().trim();
-                const image = $link.find('dt img').attr('src') || '';
+                const title = $a.text().trim();
+                if (!title) {
+                    return null;
+                }
+                // 日期常常出现在 link 的相邻 sibling 中，向后/向上找一下
+                const dateText =
+                    $a.next('span').text().trim() ||
+                    $a
+                        .parent()
+                        .find('span')
+                        .toArray()
+                        .map((el) => $(el).text().trim())
+                        .find((t) => /^[A-Za-z]{3,9}\.?\s+\d{1,2}\s*,?\s*\d{4}$/.test(t)) ||
+                    '';
 
-                // Parse date: "Dec. 19 , 2025" format
-                // Remove the extra spaces and parse
-                const cleanDate = dateText
-                    .replace(/^([A-Za-z]{3})\./, '$1') // "Dec." -> "Dec"
-                    .replaceAll(/\s*,\s*/g, ', ') // "  ,  " -> ", "
-                    .replaceAll(/\s+/g, ' ') // 多空格压成一个
-                    .trim();
-                const pubDate = timezone(parseDate(cleanDate, 'MMM D, YYYY', 'en'), 8);
+                let pubDate: Date | undefined;
+                if (dateText) {
+                    const cleanDate = dateText
+                        .replace(/^([A-Za-z]{3})\./, '$1')
+                        .replaceAll(/\s*,\s*/g, ', ')
+                        .replaceAll(/\s+/g, ' ')
+                        .trim();
+                    const parsed = parseDate(cleanDate, 'MMM D, YYYY', 'en');
+                    if (!Number.isNaN(parsed.getTime())) {
+                        pubDate = timezone(parsed, 8);
+                    }
+                }
 
                 return {
                     title,
                     link,
-                    description,
+                    description: title,
                     pubDate,
-                    image,
                 };
-            });
+            })
+            .filter((it): it is NonNullable<typeof it> => it !== null);
 
-        // Extract section title from page
         const pageTitle = $('title').text().trim() || `Gasgoo Automotive News - ${section}`;
 
         return {

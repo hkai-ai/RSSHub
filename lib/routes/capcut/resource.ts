@@ -5,6 +5,24 @@ import type { Route } from '@/types';
 import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import cache from '@/utils/cache';
 import logger from '@/utils/logger';
+import { parseDate } from '@/utils/parse-date';
+
+interface CapcutArticleItem {
+    title?: string;
+    description?: string;
+    path?: string;
+    publishTime?: string;
+    image?: { src?: string; alt?: string };
+    themeColor?: string;
+}
+
+interface CapcutBlock {
+    type?: string;
+    data?: {
+        title?: string;
+        items?: CapcutArticleItem[];
+    };
+}
 
 export const route: Route = {
     path: '/resource/:category?',
@@ -40,16 +58,16 @@ export const route: Route = {
 
                     const $ = load(response);
                     const scriptTag = $('#__MODERN_ROUTER_DATA__');
-
                     if (!scriptTag.length) {
                         throw new Error('Could not find __MODERN_ROUTER_DATA__ script tag');
                     }
 
                     const jsonData = JSON.parse(scriptTag.text());
-                    const templateData = jsonData.loaderData?.$?.template?.defaultArchive;
+                    // 站点已迁移到 `loaderData.$.article.schema.blocks`，旧 `template.defaultArchive` 不再存在。
+                    const blocks: CapcutBlock[] = jsonData.loaderData?.$?.article?.schema?.blocks || [];
 
-                    if (!templateData) {
-                        throw new Error('Could not find template data in JSON');
+                    if (blocks.length === 0) {
+                        throw new Error('Could not find blocks in JSON');
                     }
 
                     const items: Array<{
@@ -59,95 +77,50 @@ export const route: Route = {
                         pubDate?: Date;
                         category?: string;
                         author: string;
+                        image?: string;
                     }> = [];
 
-                    // Process firstShowPageList (direct array)
-                    if (templateData.firstShowPageList && Array.isArray(templateData.firstShowPageList)) {
-                        for (const article of templateData.firstShowPageList) {
-                            if (article && article.title) {
-                                items.push({
-                                    title: article.title,
-                                    link: `${baseUrl}${article.path}`,
-                                    description: article.description || '',
-                                    author: 'CapCut',
-                                    category: category || 'resource',
-                                });
-                            }
+                    for (const block of blocks) {
+                        if (block.type !== 'default:seo:article-cards') {
+                            continue;
                         }
-                    }
+                        const blockTitle = block.data?.title;
+                        const articles = block.data?.items || [];
+                        for (const article of articles) {
+                            if (!article || !article.title || !article.path) {
+                                continue;
+                            }
 
-                    // Process recommendPageList (nested arrays)
-                    if (templateData.recommendPageList && Array.isArray(templateData.recommendPageList)) {
-                        for (const pageArray of templateData.recommendPageList) {
-                            if (Array.isArray(pageArray)) {
-                                for (const article of pageArray) {
-                                    if (article && article.title) {
-                                        items.push({
-                                            title: article.title,
-                                            link: `${baseUrl}${article.path}`,
-                                            description: article.description || '',
-                                            author: 'CapCut',
-                                            category: category || 'resource',
-                                        });
-                                    }
+                            // publishTime 形如 "Feb 2, 2026 · 10 min"
+                            let pubDate: Date | undefined;
+                            if (article.publishTime) {
+                                const datePart = article.publishTime.split('·')[0].trim();
+                                const parsed = parseDate(datePart, 'MMM D, YYYY', 'en');
+                                if (!Number.isNaN(parsed.getTime())) {
+                                    pubDate = parsed;
                                 }
                             }
+
+                            items.push({
+                                title: article.title,
+                                link: `${baseUrl}${article.path}`,
+                                description: article.description || article.title,
+                                pubDate,
+                                category: blockTitle || category || 'resource',
+                                author: 'CapCut',
+                                image: article.image?.src,
+                            });
                         }
                     }
 
-                    // Remove duplicates based on link
-                    const uniqueItems = items.filter((item, index, self) => index === self.findIndex((t) => t.link === item.link));
-
-                    // Fetch detailed metadata for each article
-                    const itemsWithMetadata = await Promise.all(
-                        uniqueItems.map(
-                            (item) =>
-                                cache.tryGet(
-                                    `capcut:article:${item.link}`,
-                                    async () => {
-                                        try {
-                                            const articleResponse = await fetchHtmlWithFallback(item.link, {
-                                                headers: {
-                                                    'User-Agent': config.ua,
-                                                },
-                                            });
-
-                                            const $article = load(articleResponse);
-                                            const articleScriptTag = $article('#__MODERN_ROUTER_DATA__');
-
-                                            if (articleScriptTag.length) {
-                                                const articleJsonData = JSON.parse(articleScriptTag.text());
-                                                const articleData = articleJsonData.loaderData?.$?.article;
-
-                                                if (articleData) {
-                                                    const updatedAt = articleData.updatedAt;
-                                                    const pubDate = updatedAt ? new Date(Number(updatedAt) * 1000) : undefined;
-
-                                                    return {
-                                                        ...item,
-                                                        description: articleData.schema?.templateConfig?.description || item.description,
-                                                        pubDate,
-                                                        category: articleData.tags?.[0]?.name || item.category,
-                                                    };
-                                                }
-                                            }
-
-                                            return item;
-                                        } catch (error) {
-                                            logger.error(`Error fetching article metadata for ${item.link}: ${error}`);
-                                            return item;
-                                        }
-                                    },
-                                    2_592_000
-                                ) // 30 days cache for individual articles
-                        )
-                    );
+                    // 去重
+                    const uniqueItems = [...new Map(items.map((it) => [it.link, it])).values()];
 
                     return {
                         title: category ? `CapCut ${category} Resources` : 'CapCut Resources',
                         link: url,
                         description: category ? `Latest CapCut ${category} articles and resources` : 'Latest CapCut articles and resources for video editing',
-                        item: itemsWithMetadata,
+                        item: uniqueItems,
                     };
                 } catch (error) {
                     logger.error(`Error fetching CapCut resource feed: ${error}`);
@@ -156,6 +129,6 @@ export const route: Route = {
             },
             1800,
             false
-        ); // 30 minutes cache for main feed
+        );
     },
 };

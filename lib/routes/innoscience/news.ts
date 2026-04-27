@@ -1,7 +1,8 @@
 import { load } from 'cheerio';
 
 import type { Data, DataItem, Route } from '@/types';
-import ofetch from '@/utils/ofetch';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
+import cache from '@/utils/cache';
 import { parseDate } from '@/utils/parse-date';
 
 export const route: Route = {
@@ -13,82 +14,88 @@ export const route: Route = {
     handler,
     radar: [
         {
-            source: ['innoscience.com/news', 'innoscience.com'],
+            source: ['innoscience.com/news', 'innoscience.com/news/press-releases', 'innoscience.com'],
             target: '/news',
         },
     ],
 };
 
-interface NewsItem {
-    id: string;
-    title: string;
-    created_time: string;
-    updated_time: string;
-    url: string;
-    picture: string;
-    content: string;
-    description: string;
-}
-
-interface ApiResponse {
-    errcode: number;
-    msg: string;
-    result: {
-        total: string;
-        models: NewsItem[];
-    };
-}
-
 async function handler(): Promise<Data> {
-    const apiUrl = 'https://www.innoscience.com/search/newsList';
+    const baseUrl = 'https://www.innoscience.com';
+    const listUrl = `${baseUrl}/news/press-releases`;
 
-    const responseStr = await ofetch(apiUrl, {
-        query: {
-            id: '',
-            year: '',
-            page: '1',
-            pagesize: '9',
-        },
-        responseType: 'text',
-    });
-    const response = JSON.parse(responseStr) as ApiResponse;
-    if (response.errcode !== 0) {
-        throw new Error(`API error: ${response.msg}`);
-    }
+    const html = await fetchHtmlWithFallback(listUrl);
+    const $ = load(html);
 
-    const items: DataItem[] = await Promise.all(
-        response.result.models.map((item) => {
-            const link = item.url || `https://www.innoscience.com/site/details/${item.id}`;
+    const candidates = $('a[href*="/news/press-releases/"], a[href*="/news/customer-stories/"]')
+        .toArray()
+        .map((el) => {
+            const $a = $(el);
+            const href = $a.attr('href') || '';
+            // 跳过分页 / 列表自身链接
+            if (!/\/news\/(press-releases|customer-stories)\/\d+/.test(href) && !/\/news\/(press-releases|customer-stories)\/[a-z0-9-]+$/i.test(href)) {
+                return null;
+            }
+            const title = ($a.find('h3, h4, h2').first().text() || $a.attr('title') || $a.text()).trim();
+            if (!title) {
+                return null;
+            }
 
-            // Parse the content HTML to extract text and clean it up
-            const $ = load(item.content);
-
-            // Remove script and style tags
-            $('script, style').remove();
-
-            // Get the cleaned HTML content
-            const description = $.html().trim();
-
-            // Convert Unix timestamp to Date object
-            const pubDate = parseDate(item.updated_time, 'X');
+            const link = href.startsWith('http') ? href : `${baseUrl}${href}`;
+            const image = $a.find('img').first().attr('src') || $a.find('img').first().attr('data-src');
+            const dateText =
+                $a
+                    .find('*')
+                    .toArray()
+                    .map((node) => $(node).text().trim())
+                    .find((t) => /^[A-Za-z]{3}\s+\d{1,2},\s*\d{4}$/.test(t)) || '';
+            const category = $a.find('.category, [class*="category"], [class*="tag"]').first().text().trim();
 
             return {
-                title: item.title,
+                title,
                 link,
-                description,
-                pubDate,
-                guid: item.id,
-                // Add image if available
-                ...(item.picture && {
-                    image: item.picture.startsWith('http') ? item.picture : `https://www.innoscience.com${item.picture}`,
-                }),
+                pubDate: dateText ? parseDate(dateText, 'MMM D, YYYY', 'en') : undefined,
+                category: category ? [category] : undefined,
+                image: image ? (image.startsWith('http') ? image : `${baseUrl}${image}`) : undefined,
             };
         })
+        .filter((it): it is { title: string; link: string; pubDate?: Date; category?: string[]; image?: string } => it !== null);
+
+    // 去重
+    const uniqueItems = [...new Map(candidates.map((it) => [it.link, it])).values()];
+
+    const items: DataItem[] = await Promise.all(
+        uniqueItems.map((item) =>
+            cache.tryGet(item.link, async () => {
+                try {
+                    const detailHtml = await fetchHtmlWithFallback(item.link);
+                    const $detail = load(detailHtml);
+                    const description = $detail('article, .article-content, .news-content, [class*="content"], main').first().html()?.trim() || $detail('meta[name="description"]').attr('content') || item.title;
+                    return {
+                        title: item.title,
+                        link: item.link,
+                        description,
+                        pubDate: item.pubDate,
+                        category: item.category,
+                        image: item.image,
+                    } as DataItem;
+                } catch {
+                    return {
+                        title: item.title,
+                        link: item.link,
+                        description: item.title,
+                        pubDate: item.pubDate,
+                        category: item.category,
+                        image: item.image,
+                    } as DataItem;
+                }
+            })
+        )
     );
 
     return {
         title: 'Innoscience - News',
-        link: 'https://www.innoscience.com/news',
+        link: listUrl,
         description: 'Latest news from Innoscience Technology',
         language: 'en',
         item: items,

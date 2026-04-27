@@ -29,123 +29,61 @@ export const route: Route = {
     handler: async () => {
         const url = 'https://e.nyse.com/mac-desk-weekly-recap';
 
-        try {
-            const html = await fetchHtmlWithFallback(url);
-            const $ = load(html);
+        const html = await fetchHtmlWithFallback(url);
+        const $ = load(html);
 
-            let pubDate: Date | undefined;
-            let dateParam = '';
+        // Eloqua 单页 landing page，每周覆盖最新一期。日期文本散落在 .elq-text-cell 中，
+        // 直接对全文做正则匹配，找不到时退化为当前时间，不再抛错。
+        const fullText = $.root().text();
+        const dateMatch = fullText.match(/Published on\s+(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
 
-            // Find the publication date in the format "Published on MM/DD/YY"
-            const dateText = $('div')
-                .filter((_, el) => {
-                    const text = $(el).text();
-                    return text.includes('Published on') && /Published on \d{2}\/\d{2}\/\d{2}/.test(text);
-                })
-                .text();
-
-            if (dateText) {
-                const dateMatch = dateText.match(/Published on (\d{2}\/\d{2}\/\d{2})/);
-                if (dateMatch) {
-                    dateParam = dateMatch[1];
-                    // Parse date from MM/DD/YY format to proper Date object
-                    const [month, day, year] = dateParam.split('/');
-                    // Assuming years 00-30 are 2000s, 31-99 are 1900s
-                    const fullYear = Number.parseInt(year) <= 30 ? `20${year}` : `19${year}`;
-                    // Set to 8:00 AM in New York timezone (UTC-5 EST or UTC-4 EDT)
-                    const baseDate = parseDate(`${month}/${day}/${fullYear} 08:00`, 'MM/DD/YYYY HH:mm');
-
-                    if (!baseDate || Number.isNaN(baseDate.getTime())) {
-                        logger.error(`Failed to parse date: ${dateParam}`);
-                        throw new Error(`Invalid publication date format: ${dateParam}`);
-                    }
-
-                    pubDate = timezone(baseDate, -5); // New York timezone
-                }
+        let pubDate: Date = new Date();
+        let dateParam = '';
+        if (dateMatch) {
+            dateParam = dateMatch[1];
+            const [month, day, rawYear] = dateParam.split('/');
+            const fullYear = rawYear.length === 2 ? (Number.parseInt(rawYear) <= 30 ? `20${rawYear}` : `19${rawYear}`) : rawYear;
+            const baseDate = parseDate(`${month}/${day}/${fullYear} 08:00`, 'MM/DD/YYYY HH:mm');
+            if (baseDate && !Number.isNaN(baseDate.getTime())) {
+                pubDate = timezone(baseDate, -5);
             } else {
-                logger.error('Publication date not found in page content');
-                throw new Error('Publication date not found - page format may have changed');
+                logger.warn(`[nyse/mac-desk-weekly-recap] 解析日期失败：${dateParam}`);
             }
-
-            // Extract title
-            const titleElement = $('h1').first();
-            const title = titleElement.text().trim() || 'Weekly Recap';
-
-            // Extract authors
-            const authorText = $('div')
-                .filter((_, el) => {
-                    const text = $(el).text();
-                    return text.includes('by ') && (text.includes('Michael Reinking') || text.includes('Eric Criscuolo'));
-                })
-                .text();
-            const author = authorText.replace(/^by\s+/, '').trim() || 'NYSE MAC Desk';
-
-            // Extract market data summary (first paragraph with market numbers)
-            const marketDataElement = $('div')
-                .filter((_, el) => {
-                    const text = $(el).text();
-                    return text.includes('DOW') && text.includes('S&P 500');
-                })
-                .first();
-            const marketData = marketDataElement.text().trim();
-
-            // Extract main content
-            const contentElements: string[] = [];
-
-            // Get all text content divs, excluding headers and metadata
-            $('div').each((_, el) => {
-                const $el = $(el);
-                const text = $el.text().trim();
-
-                // Skip empty, header, metadata, or navigation elements
-                if (
-                    !text ||
-                    text.length < 50 ||
-                    text.includes('Published on') ||
-                    text.includes('NYSE MAC Desk') ||
-                    text.includes('by Michael Reinking') ||
-                    text.includes('Connect with NYSE') ||
-                    text.includes('© 2024 Intercontinental Exchange')
-                ) {
-                    return;
-                }
-
-                // Add substantial content paragraphs
-                if (text.length > 100) {
-                    contentElements.push(text);
-                }
-            });
-
-            let description = '';
-            if (marketData) {
-                description += `<strong>Market Summary:</strong><br>${marketData}<br><br>`;
-            }
-
-            // Add first few paragraphs of content
-            const mainContent = contentElements.slice(0, 3).join('<br><br>');
-            description += mainContent;
-
-            // Create the RSS item with date parameter
-            const linkWithDate = dateParam ? `${url}?date=${dateParam}` : url;
-
-            const item = {
-                title: `NYSE MAC Desk ${title}${dateParam ? ` - ${dateParam}` : ''}`,
-                link: linkWithDate,
-                description: description || 'NYSE MAC Desk Weekly Market Recap',
-                author,
-                pubDate: pubDate || new Date(),
-                category: ['finance', 'markets', 'trading'],
-            };
-
-            return {
-                title: 'NYSE MAC Desk Weekly Recap',
-                link: url,
-                description: 'Weekly market recap from the NYSE MAC Desk trading floor',
-                item: [item],
-            };
-        } catch (error) {
-            logger.error(`Failed to fetch NYSE MAC Desk Weekly Recap: ${error}`);
-            throw error;
+        } else {
+            logger.warn('[nyse/mac-desk-weekly-recap] 页面未找到 "Published on" 文本，使用当前时间作为 pubDate');
         }
+
+        const titleElement = $('h1').first();
+        const title = titleElement.text().trim() || 'Weekly Recap';
+
+        // 作者（容错，没找到不报错）
+        const authorText = $('div, p, span')
+            .filter((_, el) => /by\s+(Michael Reinking|Eric Criscuolo|NYSE\s+MAC)/i.test($(el).text()))
+            .first()
+            .text()
+            .trim();
+        const author = authorText.replace(/^.*by\s+/i, '').trim() || 'NYSE MAC Desk';
+
+        // 用 .elq-lp 整体内容作描述兜底
+        const description = $('.elq-text-cell.cell-2').first().html()?.trim() || $('.elq-lp').first().html()?.trim() || $('main').first().html()?.trim() || 'NYSE MAC Desk Weekly Market Recap';
+
+        const linkWithDate = dateParam ? `${url}?date=${dateParam.replaceAll('/', '-')}` : url;
+
+        const item = {
+            title: `NYSE MAC Desk ${title}${dateParam ? ` - ${dateParam}` : ''}`,
+            link: linkWithDate,
+            guid: linkWithDate,
+            description,
+            author,
+            pubDate,
+            category: ['finance', 'markets', 'trading'],
+        };
+
+        return {
+            title: 'NYSE MAC Desk Weekly Recap',
+            link: url,
+            description: 'Weekly market recap from the NYSE MAC Desk trading floor',
+            item: [item],
+        };
     },
 };

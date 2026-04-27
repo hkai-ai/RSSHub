@@ -58,7 +58,9 @@ async function handler(ctx: Context) {
     const seenLinks = new Set<string>();
 
     // Step 1: Extract featured article using data-framer-name attribute
-    const featuredCard = $('[data-framer-name="Featured Card"]').first();
+    // 站点把响应式变体重命名为 "Featured Card Tablet" / "Featured Card Desktop" / "Featured Card Mobile"，
+    // 用前缀匹配以兼容多种命名。
+    const featuredCard = $('[data-framer-name^="Featured Card"]').first();
     const featuredHref = featuredCard.find('a[href^="./hub/blog/"]').first().attr('href');
     const featuredTitle = featuredCard.find('h4').first().text().trim();
 

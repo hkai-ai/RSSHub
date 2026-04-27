@@ -9,7 +9,7 @@ import timezone from '@/utils/timezone';
 export const route: Route = {
     path: '/models',
     name: 'MiniMax 模型发布',
-    url: 'www.minimaxi.com',
+    url: 'platform.minimaxi.com/docs/release-notes/models',
     categories: ['programming'],
     example: '/minimaxi/models',
     features: {
@@ -22,7 +22,7 @@ export const route: Route = {
     },
     radar: [
         {
-            source: ['www.minimaxi.com/release-notes/models'],
+            source: ['platform.minimaxi.com/docs/release-notes/models', 'www.minimaxi.com/release-notes/models'],
             target: '/models',
         },
     ],
@@ -44,29 +44,35 @@ export const route: Route = {
                     pubDate: Date;
                 }> = [];
 
-                // Extract update entries from the new structure
                 let currentDate: Date | null = null;
 
-                // Process all h2 and card elements in order
+                // 兼容多种 h2 写法：`2026 年 3 月 18 日` / `2026年3月18日` / `2026 年 3 月`，零宽字符与全角空格都过滤掉
+                const dateRegex = /(\d{4})\s*年\s*(\d{1,2})\s*月(?:\s*(\d{1,2})\s*日)?/;
+
                 $('#content')
                     .children()
                     .each((_, element) => {
                         const $element = $(element);
 
-                        // Check if this is a date heading
                         if ($element.is('h2')) {
-                            const dateText = $element.find('span.cursor-pointer').text().trim();
-                            if (/\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日/.test(dateText)) {
-                                currentDate = timezone(parseDate(dateText, 'YYYY年M月D日'), 8);
+                            const dateText = $element
+                                .text()
+                                .replaceAll(/​|‌|‍|﻿/g, '')
+                                .trim();
+                            const match = dateText.match(dateRegex);
+                            if (match) {
+                                const [, year, month, day] = match;
+                                const formatted = day ? `${year}-${month}-${day}` : `${year}-${month}-1`;
+                                currentDate = timezone(parseDate(formatted, 'YYYY-M-D'), 8);
                             }
+                            return;
                         }
 
-                        // Check if this is a model card
-                        if ($element.is('a.card') && currentDate) {
+                        // 卡片为 div.card（不再是 a.card），无 href，使用日期 anchor 作为 link
+                        if ($element.is('div.card, a.card') && currentDate) {
                             const title = $element.find('[data-component-part="card-title"]').text().trim();
                             const descriptionSpans = $element.find('[data-component-part="card-content"] span[data-as="p"]');
                             const descriptionParts: string[] = [];
-
                             descriptionSpans.each((_, span) => {
                                 const text = $(span).html();
                                 if (text) {
@@ -75,13 +81,15 @@ export const route: Route = {
                             });
 
                             const description = descriptionParts.join('<br><br>');
-                            const link = $element.attr('href');
+                            const headingId = $element.prevAll('h2').first().attr('id') || '';
+                            const href = $element.is('a') ? $element.attr('href') : undefined;
+                            const link = href ? (href.startsWith('http') ? href : `${baseUrl.replace(/\/[^/]*$/, '')}${href}`) : `${baseUrl}#${headingId}`;
 
-                            if (title && link) {
+                            if (title) {
                                 items.push({
                                     title,
                                     description,
-                                    link: link.startsWith('http') ? link : `https://www.minimaxi.com${link}`,
+                                    link,
                                     pubDate: currentDate,
                                 });
                             }
@@ -98,6 +106,6 @@ export const route: Route = {
             },
             3600,
             false
-        ); // Cache for 1 hour
+        );
     },
 };

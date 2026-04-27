@@ -8,7 +8,7 @@ export const route: Route = {
     path: '/blog/:category?',
     categories: ['programming'],
     example: '/lumalabs/blog/news',
-    parameters: { category: 'Blog category, defaults to news' },
+    parameters: { category: '保留兼容参数（lumalabs 已统一并入 /news）。' },
     features: {
         requireConfig: false,
         requirePuppeteer: false,
@@ -19,48 +19,44 @@ export const route: Route = {
     },
     radar: [
         {
-            source: ['lumalabs.ai/blog/:category'],
-            target: '/blog/:category',
+            source: ['lumalabs.ai/news', 'lumalabs.ai/blog/:category'],
+            target: '/blog/:category?',
         },
     ],
-    name: 'Blog',
+    name: 'News',
     maintainers: ['claude-code'],
     handler,
 };
 
-async function handler(ctx) {
-    const category = ctx.req.param('category') || 'news';
+async function handler() {
     const baseUrl = 'https://lumalabs.ai';
-    const url = `${baseUrl}/blog/${category}`;
+    // 站点已将原 `/blog/news` 路径迁移到 `/news`
+    const url = `${baseUrl}/news`;
 
     const response = await fetchHtmlWithFallback(url);
     const $ = load(response);
 
-    // Extract articles from the grid container
-    const articles = $(String.raw`.mx-auto.grid.w-full.grid-cols-1.gap-6.md\:grid-cols-2.lg\:grid-cols-3 > div`)
+    const articles = $('a.card-link[href^="/news/"]')
         .toArray()
-        .map((ele) => {
-            const item = $(ele);
+        .map((linkEl) => {
+            const $a = $(linkEl);
+            const href = $a.attr('href') || '';
+            const title = $a.text().trim();
+            const link = href.startsWith('http') ? href : `${baseUrl}${href}`;
 
-            // Extract title
-            const title = item.find('h3').text().trim();
-
-            // Extract date
-            const dateText = item.find('p.mb-2.text-sm.font-medium').text().trim();
-
-            // Extract description
-            const description = item
-                .find(String.raw`.text-sm.text-black\/70 div p`)
-                .text()
-                .trim();
-
-            // Extract link from the "Read article" link
-            const relativeLink = item.find('a[href^="/blog/news/"]').attr('href');
-            const link = relativeLink ? `${baseUrl}${relativeLink}` : '';
-
-            // Extract image
-            const img = item.find('img');
-            const image = img.attr('src') || '';
+            // 卡片本身在 a 链接的祖先 div 上：grid > div(card)，包含分类、日期、图片。
+            const $card = $a.closest('.group, [class*="grid"][class*="auto-rows-min"]');
+            const dateText = $card
+                .find('span')
+                .toArray()
+                .map((el) => $(el).text().trim())
+                .find((t) => /^[A-Za-z]{3}\s+\d{1,2},\s*\d{4}$/.test(t));
+            const categoryText = $card
+                .find('span')
+                .toArray()
+                .map((el) => $(el).text().trim())
+                .find((t) => t && t === t.toUpperCase() && t.length < 40);
+            const image = $card.find('img').first().attr('src') || $card.find('img').first().attr('data-src');
 
             if (!title || !link) {
                 return null;
@@ -69,18 +65,21 @@ async function handler(ctx) {
             return {
                 title,
                 link,
-                description: description || title,
-                pubDate: parseDate(dateText),
-                category,
-                image: image.startsWith('http') ? image : `${baseUrl}${image}`,
+                description: title,
+                pubDate: dateText ? parseDate(dateText, 'MMM D, YYYY', 'en') : undefined,
+                category: categoryText ? [categoryText] : undefined,
+                image: image ? (image.startsWith('http') ? image : `${baseUrl}${image}`) : undefined,
             };
         })
-        .filter(Boolean);
+        .filter((it): it is NonNullable<typeof it> => it !== null);
+
+    // 去重（同一条新闻可能被多个内部链接指向）
+    const uniqueItems = [...new Map(articles.map((it) => [it.link, it])).values()];
 
     return {
-        title: `Luma Labs - ${category.charAt(0).toUpperCase() + category.slice(1)}`,
+        title: 'Luma Labs - News',
         link: url,
         description: 'Get the latest Luma AI news, updates, and innovations. Stay informed on new features, AI advancements, and industry trends in video and 3D creation.',
-        item: articles,
+        item: uniqueItems,
     };
 }

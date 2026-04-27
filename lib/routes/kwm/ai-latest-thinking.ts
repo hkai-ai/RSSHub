@@ -1,9 +1,9 @@
 import { load } from 'cheerio';
 
 import type { Route } from '@/types';
+import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import cache from '@/utils/cache';
 import { parseDate } from '@/utils/parse-date';
-import { getPageHtml } from '@/utils/puppeteer';
 
 export const route: Route = {
     path: '/ai-latest-thinking',
@@ -12,7 +12,7 @@ export const route: Route = {
     parameters: {},
     features: {
         requireConfig: false,
-        requirePuppeteer: true,
+        requirePuppeteer: false,
         antiCrawler: true,
         supportBT: false,
         supportPodcast: false,
@@ -20,54 +20,43 @@ export const route: Route = {
     },
     radar: [
         {
-            source: ['kwm.com/cn/zh/expertise/sectors/artificial-intelligence/artificial-intelligence-latest-thinking.html'],
+            source: ['www.kingandwood.com/cn/zh/expertise/sectors/artificial-intelligence.html', 'kwm.com/cn/zh/expertise/sectors/artificial-intelligence/artificial-intelligence-latest-thinking.html'],
         },
     ],
     name: '人工智能专栏 - 最新文章',
     maintainers: [''],
     handler,
-    url: 'kwm.com/cn/zh/expertise/sectors/artificial-intelligence/artificial-intelligence-latest-thinking.html',
+    url: 'www.kingandwood.com/cn/zh/expertise/sectors/artificial-intelligence.html',
 };
 
 async function handler() {
-    const baseUrl = 'https://www.kwm.com';
-    const currentUrl = `${baseUrl}/cn/zh/expertise/sectors/artificial-intelligence/artificial-intelligence-latest-thinking.html`;
+    // 旧 `kwm.com/.../artificial-intelligence-latest-thinking.html` 已 301 / 下线，
+    // 父页 kingandwood.com 现承载 AI 专栏完整列表
+    const baseUrl = 'https://www.kingandwood.com';
+    const currentUrl = `${baseUrl}/cn/zh/expertise/sectors/artificial-intelligence.html`;
 
     return await cache.tryGet(
         currentUrl,
         async () => {
-            const html = await getPageHtml(currentUrl, {
-                gotoConfig: { waitUntil: 'domcontentloaded' },
-                prepare: async (page) => {
-                    await page.waitForSelector('.article-item', { timeout: 30_000 });
-                },
-                fallbackOptions: {
-                    waitUntil: 'networkidle',
-                    isBanResourceRequest: true,
-                },
-            });
-
+            const html = await fetchHtmlWithFallback(currentUrl);
             const $ = load(html);
 
-            const items = $('.article-display .article-body .article-item')
+            const items = $('.article-body .article-item, .article-item')
                 .toArray()
                 .map((item) => {
                     const $item = $(item);
 
-                    // 跳过隐藏的文章
-                    if ($item.hasClass('item-hide')) {
+                    const title = $item.find('h3').text().trim();
+                    const $a = $item.find('a').first();
+                    const relativeLink = $a.attr('href');
+                    if (!title || !relativeLink) {
                         return null;
                     }
-
-                    const title = $item.find('h3').text().trim();
-                    const relativeLink = $item.find('a').attr('href');
-                    const link = relativeLink ? `${baseUrl}${relativeLink}` : '';
-                    const description = $item.find('.abstract').text().trim();
-                    const dateText = $item.find('.date').text().trim();
-
-                    // 处理日期格式 (2025/08/14 -> 2025-08-14)
+                    const link = relativeLink.startsWith('http') ? relativeLink : `${baseUrl}${relativeLink}`;
+                    const description = $item.find('.abstract, p.abstract').text().trim() || title;
+                    const dateText = $item.find('.date, p.date').first().text().trim();
                     const formattedDate = dateText.replaceAll('/', '-');
-                    const pubDate = parseDate(formattedDate);
+                    const pubDate = formattedDate ? parseDate(formattedDate) : undefined;
 
                     return {
                         title,
@@ -78,7 +67,7 @@ async function handler() {
                         author: '金杜律师事务所',
                     };
                 })
-                .filter(Boolean); // 移除 null 值
+                .filter((it): it is NonNullable<typeof it> => it !== null);
 
             return {
                 title: '金杜律师事务所 - 人工智能专栏最新文章',

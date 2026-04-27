@@ -2,6 +2,6 @@ import type { Namespace } from '@/types';
 
 export const namespace: Namespace = {
     name: 'LangChain Blog',
-    url: 'blog.langchain.dev',
+    url: 'www.langchain.com',
     lang: 'en',
 };

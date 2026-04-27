@@ -23,9 +23,13 @@ const handler = async () => {
 
     const $ = load(html);
 
-    const items = $('main > div > main > div')
-        .children()
+    // 列表容器：grid 下的所有 <a href="/blog/...">
+    const items = $('a[href^="/blog/"]')
         .toArray()
+        .filter((el) => {
+            const href = $(el).attr('href') || '';
+            return href !== '/blog' && href !== '/blog/' && $(el).find('h2').length > 0;
+        })
         .map((element) => {
             const $el = $(element);
             const href = $el.attr('href');
@@ -34,11 +38,10 @@ const handler = async () => {
             }
             const link = new URL(href, baseUrl).href;
             const title = $el.find('h2').first().text().trim();
-            const description = $el.find('p.line-clamp-2').first().text().trim();
-            const category = $el.find('div.text-sm.text-muted-foreground').first().text().trim();
+            const description = $el.find('p.line-clamp-2').first().text().trim() || $el.find('p').first().text().trim();
 
-            // Extract publication date from time element
-            const dateTimeAttr = $el.find('time').first().attr('datetime') || $el.find('time').first().attr('dateTime');
+            // 时间元素 datetime 通常为完整时间戳
+            const dateTimeAttr = $el.find('time').first().attr('datetime');
             let pubDate: Date | undefined;
             if (dateTimeAttr) {
                 const parsedDate = new Date(dateTimeAttr);
@@ -47,32 +50,27 @@ const handler = async () => {
                 }
             }
 
-            // Extract author if available (optional field)
-            const authorSpan = $el.find('div.mt-2 span').first();
-            const author = authorSpan.text().trim() || undefined;
-
-            // Extract image
             const imgSrc = $el.find('img').first().attr('src');
             const image = imgSrc ? new URL(imgSrc, baseUrl).href : undefined;
             return {
                 title,
                 link,
-                description,
-                category: [category],
+                description: description || title,
                 pubDate,
-                author,
-                ...(image && {
-                    image,
-                }),
+                ...(image && { image }),
             };
         })
         .filter((ele) => ele !== null);
+
+    // 去重（同一篇可能在 grid 中出现多次或导航中重复）
+    const uniqueItems = [...new Map(items.map((it) => [it!.link, it!])).values()];
+
     return {
         title: 'Lovable Blog',
         link: targetUrl,
         description: 'Latest updates from Lovable - AI-powered design and development platform',
         language: 'en' as const,
-        item: items,
+        item: uniqueItems,
     };
 };
 
