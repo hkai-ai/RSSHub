@@ -8,7 +8,7 @@ import { parseDate } from '@/utils/parse-date';
 export const route: Route = {
     path: '/blog/:category?',
     name: 'Blog',
-    url: 'cognition.ai/blog',
+    url: 'cognition.com/blog',
     maintainers: ['Loongphy', 'ttttmr'],
     example: '/cognition/blog',
     categories: ['programming'],
@@ -22,6 +22,10 @@ export const route: Route = {
         supportScihub: false,
     },
     radar: [
+        {
+            source: ['cognition.com/blog', 'cognition.com/blog/:slug', 'cognition.ai/blog'],
+            target: '/blog',
+        },
         {
             source: ['cognition.ai/blog/1', 'cognition.ai/blog/:category/1'],
             target: '/blog/:category?',
@@ -54,42 +58,43 @@ const splitAuthors = (text: string | undefined): DataItem['author'] => {
 };
 
 export async function handler(ctx) {
-    const baseUrl = 'https://cognition.ai';
+    const baseUrl = 'https://cognition.com';
     const { category } = ctx.req.param();
-    const listPath = category ? `/blog/${category}/1` : '/blog/1';
+    const listPath = category ? `/blog/${category}/1` : '/blog';
     const targetUrl = new URL(listPath, baseUrl).href;
     const html = await ofetch(targetUrl);
     const $ = load(html);
 
-    const items = $('#blog-post-list__list li.blog-post-list__list-item')
+    const seen = new Set<string>();
+    const items = $('main li:has(a[href^="/blog/"] h2), #blog-post-list__list li.blog-post-list__list-item')
         .toArray()
         .map((el) => {
             const element = $(el);
-            const linkElement = element.find('a.o-blog-preview').first();
+            const linkElement = element.find('a[href^="/blog/"], a.o-blog-preview').first();
 
             const href = linkElement.attr('href');
             const link = href ? new URL(href, baseUrl).href : undefined;
 
-            if (!link) {
+            if (!link || seen.has(link)) {
                 return;
             }
 
-            const title = linkElement.find('h3.o-blog-preview__title').text().trim();
+            const title = linkElement.find('h2, h3.o-blog-preview__title').first().text();
             if (!title) {
                 return;
             }
 
-            const summary = linkElement.find('p.o-blog-preview__intro').text().trim();
+            const summary = linkElement.find('p').first().html();
 
             const dateNode = linkElement.find('.o-blog-preview__meta-date').clone();
             dateNode.find('.o-blog-preview__meta').remove();
-            const dateText = dateNode.text().trim();
+            const dateText = dateNode.text().trim() || linkElement.find('span').first().text().trim();
             const authorText = linkElement.find('.o-blog-preview__meta-author').text().trim();
 
             const dataItem: DataItem = {
                 title,
                 link,
-                pubDate: parseDate(dateText),
+                pubDate: /^\d{2}\.\d{2}\.\d{2}$/.test(dateText) ? parseDate(dateText + ' +0000', 'MM.DD.YY ZZ') : parseDate(dateText),
             };
 
             if (summary) {
@@ -101,9 +106,14 @@ export async function handler(ctx) {
                 dataItem.author = authors;
             }
 
+            seen.add(link);
             return dataItem;
         })
         .filter((item): item is DataItem => item !== undefined);
+
+    if (items.length === 0) {
+        throw new Error(`No Cognition blog articles found at ${targetUrl}; check the list page structure`);
+    }
 
     const imageAttr = $('meta[property="og:image"]').attr('content');
     const image = imageAttr ? new URL(imageAttr, baseUrl).href : undefined;
@@ -112,7 +122,6 @@ export async function handler(ctx) {
         title: $('title').text(),
         description: $('meta[name="description"]').attr('content'),
         link: targetUrl,
-        allowEmpty: true,
         item: items,
         image,
     };
