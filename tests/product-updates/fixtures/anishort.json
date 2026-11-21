@@ -1,0 +1,26 @@
+{
+    "code": 0,
+    "data": {
+        "list": [
+            {
+                "videos": [
+                    {
+                        "id": 172,
+                        "menu_id": 46,
+                        "name": "Example tutorial",
+                        "description": "Example capability guide.",
+                        "created_at": 1795220806,
+                        "video_url": "https://example.org/video.mp4",
+                        "video_status": 0
+                    },
+                    {
+                        "id": 173,
+                        "menu_id": 44,
+                        "name": "User work",
+                        "video_status": 0
+                    }
+                ]
+            }
+        ]
+    }
+}
