@@ -109,7 +109,7 @@ RUN \
         corepack enable pnpm && \
         pnpm --allow-build=rebrowser-puppeteer add rebrowser-puppeteer@$(cat /app/.puppeteer_version) --save-prod && \
         pnpm rb && \
-        pnpx rebrowser-puppeteer browsers install chrome ; \
+        pnpm exec rebrowser-puppeteer browsers install chrome ; \
     else \
         mkdir -p /app/node_modules/.cache/puppeteer ; \
     fi;
