@@ -17,7 +17,7 @@ import { parseBlog as parseSkywork } from './routes/skywork/blog';
 import { parseChanges, renderChangeNode } from './routes/skywork/changelog';
 import { parseCliRelease } from './routes/updream/cli';
 import { parseCommunity } from './routes/wps/ai';
-import { parseProfile, parsePublicWorks } from './routes/xinpianchang/user';
+import { parseOriginalWorks, parseProfile, parsePublicWorks } from './routes/xinpianchang/user';
 import { parseChangelog as parseZCode } from './routes/zcode/changelog';
 import type { DataItem } from './types';
 import { parseHelpArticle, parseHelpLinks } from './utils/help-center-updates';
@@ -78,6 +78,18 @@ describe('Product source adapters', () => {
         expect(parsePublicWorks(response)).toEqual(parseProfile(fixture('2528.html')));
         expect(() => parsePublicWorks({ status: 401 })).toThrow();
         expect(() => parsePublicWorks({ status: 0, data: { list: [] } })).toThrow();
+    });
+
+    it('keeps only the verified account as primary publisher, excluding collaboration works', () => {
+        const work = { id: 1, title: 'Official announcement', web_url: 'https://www.xinpianchang.com/a1', content: 'First-party body', author: { userinfo: { id: 16_448_630, username: 'Shotlab无限世界赛' } } };
+        const response = {
+            status: 0,
+            data: {
+                list: [work, { ...work, id: 2, author: { userinfo: { id: 999, username: 'Shotlab无限世界赛' } } }, { ...work, id: 3, author: { userinfo: { username: 'Unknown publisher ID' } } }, { ...work, id: 4, is_private: true }],
+            },
+        };
+        expect(parseOriginalWorks(response, '16448630').map((item) => item.guid)).toEqual(['xinpianchang:1']);
+        expect(() => parseOriginalWorks(response, '555')).toThrow();
     });
 });
 

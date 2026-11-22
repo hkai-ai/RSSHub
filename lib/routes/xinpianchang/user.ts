@@ -14,7 +14,7 @@ interface ProfileWork {
     description?: string;
     publish_time?: number;
     is_private?: boolean;
-    author?: { userinfo?: { username?: string } };
+    author?: { userinfo?: { id?: number; username?: string } };
 }
 
 export const parseProfile = (html: string) => {
@@ -43,6 +43,14 @@ export const parsePublicWorks = (response: WorksResponse) =>
         '新片场用户作品'
     );
 
+export const parseOriginalWorks = (response: WorksResponse, uid: string) => parsePublicWorks({ ...response, data: { list: (response.data?.list ?? []).filter((entry) => String(entry.author?.userinfo?.id) === uid) } });
+
+export const fetchPublicWorks = (uid: string) =>
+    ofetch<WorksResponse>(`https://www.xinpianchang.com/api/xpc/v2/user/${uid}/articles`, {
+        query: { page: 1, per_page: 20, public_status: 0, order: 'new' },
+        responseType: 'json',
+    });
+
 export const route: Route = {
     path: '/user/:uid',
     name: '用户主页作品',
@@ -57,10 +65,7 @@ export const route: Route = {
             throw new InvalidParameterError('Use the numeric user ID.');
         }
         const link = `https://www.xinpianchang.com/u${uid}`;
-        const response = await ofetch<WorksResponse>(`https://www.xinpianchang.com/api/xpc/v2/user/${uid}/articles`, {
-            query: { page: 1, per_page: 20, public_status: 0, order: 'new' },
-            responseType: 'json',
-        });
+        const response = await fetchPublicWorks(uid);
         const item = parsePublicWorks(response);
         return { title: `${item[0].author ?? `新片场用户${uid}`} · 公开作品`, link, item };
     },
