@@ -2,8 +2,9 @@ import { load } from 'cheerio';
 
 import InvalidParameterError from '@/errors/types/invalid-parameter';
 import type { Route } from '@/types';
+import ofetch from '@/utils/ofetch';
 import { parseDate } from '@/utils/parse-date';
-import { fetchProductHtml, requireProductItems } from '@/utils/product-updates';
+import { requireProductItems } from '@/utils/product-updates';
 
 interface ProfileWork {
     id: number;
@@ -19,8 +20,17 @@ interface ProfileWork {
 export const parseProfile = (html: string) => {
     const $ = load(html);
     const data = JSON.parse($('#__NEXT_DATA__').text()) as { props: { pageProps: { articleData: { list: ProfileWork[] } } } };
-    return requireProductItems(
-        data.props.pageProps.articleData.list
+    return parsePublicWorks({ status: 0, data: data.props.pageProps.articleData });
+};
+
+interface WorksResponse {
+    status: number;
+    data?: { list: ProfileWork[] };
+}
+
+export const parsePublicWorks = (response: WorksResponse) =>
+    requireProductItems(
+        (response.status === 0 ? (response.data?.list ?? []) : [])
             .filter((entry) => !entry.is_private)
             .map((entry) => ({
                 title: entry.title,
@@ -32,7 +42,6 @@ export const parseProfile = (html: string) => {
             })),
         '新片场用户作品'
     );
-};
 
 export const route: Route = {
     path: '/user/:uid',
@@ -48,8 +57,11 @@ export const route: Route = {
             throw new InvalidParameterError('Use the numeric user ID.');
         }
         const link = `https://www.xinpianchang.com/u${uid}`;
-        const html = await fetchProductHtml(link);
-        const $ = load(html);
-        return { title: $('title').text(), link, item: parseProfile(html) };
+        const response = await ofetch<WorksResponse>(`https://www.xinpianchang.com/api/xpc/v2/user/${uid}/articles`, {
+            query: { page: 1, per_page: 20, public_status: 0, order: 'new' },
+            responseType: 'json',
+        });
+        const item = parsePublicWorks(response);
+        return { title: `${item[0].author ?? `新片场用户${uid}`} · 公开作品`, link, item };
     },
 };

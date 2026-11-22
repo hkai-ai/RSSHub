@@ -14,9 +14,10 @@ import { parseBlog as parseMuse } from './routes/muse/blog';
 import { parseBlog as parseRunningHub } from './routes/runninghub/blog';
 import { parseNews as parseSenseTime } from './routes/sensetime/news';
 import { parseBlog as parseSkywork } from './routes/skywork/blog';
+import { parseChanges, renderChangeNode } from './routes/skywork/changelog';
 import { parseCliRelease } from './routes/updream/cli';
 import { parseCommunity } from './routes/wps/ai';
-import { parseProfile } from './routes/xinpianchang/user';
+import { parseProfile, parsePublicWorks } from './routes/xinpianchang/user';
 import { parseChangelog as parseZCode } from './routes/zcode/changelog';
 import type { DataItem } from './types';
 import { parseHelpArticle, parseHelpLinks } from './utils/help-center-updates';
@@ -69,6 +70,49 @@ describe('Product source adapters', () => {
         const items = parseProfile(fixture('2528.html'));
         expect(items[0].link).toBe('https://www.xinpianchang.com/a13869391');
         expect(items[0].guid).toBe('xinpianchang:13869391');
+    });
+
+    it('uses the official public-works API and rejects unsuccessful responses', () => {
+        const data = JSON.parse(fixture('2528.html').match(/<script[^>]*>([\s\S]*?)<\/script>/)![1]);
+        const response = { status: 0, data: data.props.pageProps.articleData };
+        expect(parsePublicWorks(response)).toEqual(parseProfile(fixture('2528.html')));
+        expect(() => parsePublicWorks({ status: 401 })).toThrow();
+        expect(() => parsePublicWorks({ status: 0, data: { list: [] } })).toThrow();
+    });
+});
+
+describe('Skywork first-party changelog', () => {
+    it('uses official page IDs, source dates and rich text instead of blog SEO posts', () => {
+        const items = parseChanges({
+            code: 0,
+            data: {
+                page_list: [
+                    {
+                        page_info: {
+                            page_id: 'release-example',
+                            title: 'Example product release',
+                            create_time: '2026-07-17 07:27:12',
+                            content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Release body' }] }] }),
+                        },
+                    },
+                ],
+            },
+        });
+        expect(items[0].guid).toBe('skywork-changelog:release-example');
+        expect(items[0].description).toBe('<p>Release body</p>');
+        expect(items[0].pubDate).toBeTruthy();
+        expect(items[0].author).toBe('Skywork');
+    });
+
+    it('rejects inaccessible or empty changelogs', () => {
+        expect(() => parseChanges({ code: 401 })).toThrow();
+        expect(() => parseChanges({ code: 0, data: { page_list: [] } })).toThrow();
+    });
+
+    it('escapes rich text and drops unsafe links and image sources', () => {
+        expect(renderChangeNode({ type: 'text', text: '<script>example</script>', marks: [{ type: 'link', attrs: { href: 'javascript:alert(1)' } }] })).toBe('&lt;script&gt;example&lt;/script&gt;');
+        expect(renderChangeNode({ type: 'image', attrs: { src: 'javascript:alert(1)' } })).toBe('');
+        expect(renderChangeNode({ type: 'image', attrs: { src: '/fallback.png', cdnsrc: 'https://skyworkcdn-wiki.skyworkcdn.com/example.png' } })).toContain('https://skyworkcdn-wiki.skyworkcdn.com/example.png');
     });
 });
 
