@@ -72,17 +72,25 @@ async function handler(ctx) {
         },
     });
 
-    const list = response.data.map((item) => parseItem(item));
+    const list = (response?.data || []).map((item) => parseItem(item));
 
     const items = await Promise.all(
         list.map((item) =>
             cache.tryGet(item.link, async () => {
                 if (item.eventId) {
-                    item.description = await parseEventDetail(item);
-                } else {
-                    const response = await ofetch(item.link);
-                    const $ = load(response);
-                    item.description = item.is_event ? $('div.box2').html() : $('.post-content').html();
+                    try {
+                        item.description = await parseEventDetail(item);
+                    } catch {
+                        item.description = item.description || item.title;
+                    }
+                } else if (!item.description) {
+                    try {
+                        const pageHtml = await ofetch(item.link);
+                        const $ = load(pageHtml);
+                        item.description = (item.is_event ? $('div.box2').html() : $('.post-content').html()) || item.title;
+                    } catch {
+                        item.description = item.title;
+                    }
                 }
                 return item;
             })

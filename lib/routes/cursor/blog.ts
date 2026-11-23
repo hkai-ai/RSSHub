@@ -6,9 +6,60 @@ import { ViewType } from '@/types';
 import { fetchHtmlWithFallback } from '@/utils/browser-crawler';
 import { parseDate } from '@/utils/parse-date';
 
+export function parseCursorBlogHtml(html: string, limit = 25, baseUrl = 'https://cursor.com'): DataItem[] {
+    const $ = load(html);
+    const main = $('#main').last();
+    const container = main.length ? main : $.root();
+    const byUrl = new Map<string, DataItem>();
+
+    container
+        .find('article')
+        .toArray()
+        .forEach((el) => {
+            const $el = $(el);
+            const innerLink = $el.find('a[href]').first();
+            const $link = innerLink.length ? innerLink : $el.parent('a[href]');
+            const href = $link.attr('href');
+
+            if (!href || /^https?:/i.test(href) || !/\/blog\/[^/]/.test(href)) {
+                return;
+            }
+
+            const ps = $el.find('p');
+            const headingTitle = $el.find('h1, h2, h3, h4').first().text().trim();
+            const title = headingTitle || ps.first().text().trim();
+            if (!title) {
+                return;
+            }
+            const description = headingTitle ? ps.first().text().trim() : ps.eq(1).text().trim();
+
+            const datetime = $el.find('time').first().attr('datetime');
+            const pubDate = datetime ? parseDate(datetime.trim()) : undefined;
+            const link = new URL(href, baseUrl).href;
+
+            const existing = byUrl.get(link);
+            if (!existing || (!existing.pubDate && pubDate) || (description && !existing.description)) {
+                byUrl.set(link, {
+                    title,
+                    description: description || existing?.description || title,
+                    pubDate: pubDate ?? existing?.pubDate,
+                    link,
+                });
+            }
+        });
+
+    return [...byUrl.values()]
+        .sort((a, b) => {
+            const ta = a.pubDate ? new Date(a.pubDate).getTime() : 0;
+            const tb = b.pubDate ? new Date(b.pubDate).getTime() : 0;
+            return tb - ta;
+        })
+        .slice(0, limit);
+}
+
 export const handler = async (ctx: Context): Promise<Data> => {
     const { topic, locale } = ctx.req.param();
-    const limit: number = Number.parseInt(ctx.req.query('limit') ?? '10', 10);
+    const limit: number = Number.parseInt(ctx.req.query('limit') ?? '25', 10);
 
     const baseUrl = 'https://cursor.com';
     const normalizedTopic = topic === 'all' ? undefined : topic;
@@ -18,45 +69,7 @@ export const handler = async (ctx: Context): Promise<Data> => {
 
     const html = await fetchHtmlWithFallback(targetUrl);
     const $ = load(html);
-
-    const main = $('#main').last(); // there are two main tags before hydration
-    const items: DataItem[] = main
-        .find('article')
-        .toArray()
-        .map((el): DataItem | null => {
-            const $el = $(el);
-            // Cursor 改版后卡片有两种结构：
-            //   1) Featured：article 内含 a 链接（早期版式）
-            //   2) Standard / 客户故事：a 在 article 外层（<a><article/></a>）
-            // 同时 "In the Press" / 视频 / changelog 区块的 article 链接是站外或非
-            // 博客路径，需要过滤掉以避免污染 RSS。
-            const innerLink = $el.find('a[href]').first();
-            const $link = innerLink.length ? innerLink : $el.parent('a[href]');
-            const href = $link.attr('href');
-
-            if (!href || /^https?:/i.test(href) || !/\/blog\/[^/]/.test(href)) {
-                return null;
-            }
-
-            const ps = $el.find('p');
-            const title = ps.first().text().trim();
-            if (!title) {
-                return null;
-            }
-            const description = ps.eq(1).text().trim();
-
-            const datetime = $el.find('time').first().attr('datetime');
-            const pubDate = datetime ? parseDate(datetime.trim()) : undefined;
-
-            return {
-                title,
-                description,
-                pubDate,
-                link: new URL(href, baseUrl).href,
-            };
-        })
-        .filter((item): item is DataItem => item !== null)
-        .slice(0, limit);
+    const items = parseCursorBlogHtml(html, limit, baseUrl);
 
     return {
         title: $('title').text() || 'Cursor Blog',

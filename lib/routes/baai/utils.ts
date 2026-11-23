@@ -21,14 +21,27 @@ const getTagsData = () =>
         }));
     });
 
-const parseItem = (item) => ({
-    link: item.is_event ? `${eventUrl}/activities/${item.event_info.id}` : `${baseUrl}/view/${item.story_id}`,
-    title: item.is_event ? item.event_info.name : item.story_info.title,
-    pubDate: timezone(parseDate(item.is_event ? item.event_info.time_desc : item.story_info.created_at.replace('发布', '').replace('分享', '')), 8),
-    author: item.is_event ? item.event_info.company : item.story_info.user_name,
-    category: item.is_event ? null : item.story_info.tag_names.map((tag) => tag.title),
-    eventId: item.is_event ? item.event_info.id : null,
-});
+const parseItem = (item) => {
+    const isEvent = Boolean(item?.is_event && item?.event_info);
+    const storyInfo = item?.story_info || {};
+    const storyId = item?.story_id ?? storyInfo.id;
+    const rawCreatedAt = String(storyInfo.created_at || '')
+        .replace('发布', '')
+        .replace('分享', '')
+        .trim();
+    const tagNames = Array.isArray(storyInfo.tag_names) ? storyInfo.tag_names.map((tag) => tag?.title).filter(Boolean) : [];
+
+    return {
+        link: isEvent ? `${eventUrl}/activities/${item.event_info.id}` : `${baseUrl}/view/${storyId}`,
+        title: isEvent ? item.event_info.name : storyInfo.title,
+        description: isEvent ? '' : storyInfo.content || storyInfo.title || '',
+        pubDate: timezone(parseDate(isEvent ? item.event_info.time_desc : rawCreatedAt), 8),
+        author: isEvent ? item.event_info.company : storyInfo.user_name,
+        category: isEvent ? null : tagNames,
+        eventId: isEvent ? item.event_info.id : null,
+        is_event: isEvent,
+    };
+};
 
 const parseEventDetail = async (item) => {
     const data = await ofetch(`${eventUrl}/api/api/Activity/IntroductionTypes`, {
@@ -37,7 +50,7 @@ const parseEventDetail = async (item) => {
         },
         parseResponse: (txt) => destr(txt),
     });
-    return data.data.ac_desc + data.data.ac_desc_two;
+    return (data?.data?.ac_desc || '') + (data?.data?.ac_desc_two || '');
 };
 
 export { apiHost, baseUrl, eventUrl, getTagsData, parseEventDetail, parseItem };
