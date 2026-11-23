@@ -26,11 +26,13 @@ jobs:
                       set -eu
                       # 拉取源代码
                       cd /home/lighthouse/docker-apps/RSSHub
-                      git pull
+                      git fetch origin
+                      git checkout master
+                      git reset --hard origin/master
 
                       # 构建镜像
                       sudo docker build --build-arg PUPPETEER_SKIP_DOWNLOAD=0 -t rsshub:latest .
 
-                      # 启动服务
+                      # 启动服务（强制重建容器以加载最新构建的 rsshub:latest 镜像）
                       cd /home/lighthouse/docker-apps/rsshub-compose
-                      sudo docker compose up -d
+                      sudo docker compose up -d --force-recreate
