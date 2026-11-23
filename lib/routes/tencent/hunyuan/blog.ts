@@ -24,9 +24,7 @@ interface HunyuanResearchPublicItem {
 }
 
 export function cleanHunyuanMarkdown(raw = ''): string {
-    return raw
-        .replace(/@@@coverCard[\s\S]*?(?:@@@|\n\n)/g, '')
-        .trim();
+    return raw.replace(/@@@coverCard[\s\S]*?(?:@@@|\n\n)/g, '').trim();
 }
 
 export function parseHunyuanResearchPublicList(list: HunyuanResearchPublicItem[] = []): DataItem[] {

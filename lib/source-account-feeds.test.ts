@@ -160,7 +160,8 @@ describe('official source account feeds', () => {
         expect(tokens.lsd).toBe('lsd_abc');
         expect(tokens.spinR).toBe('105582');
 
-        const html = '<div><a href="https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/">FEATURED</a><div><a href="https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/">Introducing Muse Spark 1.1</a><span>July 9, 2026</span></div></div>';
+        const html =
+            '<div><a href="https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/">FEATURED</a><div><a href="https://ai.meta.com/blog/introducing-muse-spark-meta-model-api/">Introducing Muse Spark 1.1</a><span>July 9, 2026</span></div></div>';
         const items = parseMetaAiBlogHtml(html);
         expect(items).toHaveLength(1);
         expect(items[0].title).toBe('Introducing Muse Spark 1.1');
