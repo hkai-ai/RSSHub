@@ -20,7 +20,7 @@ export const route: Route = {
     },
     radar: [
         {
-            source: ['app.klingai.com/cn/release-history'],
+            source: ['klingai.com/release-note/release-history', 'kling.ai/release-note/release-history'],
         },
     ],
     name: '更新日志',
@@ -29,8 +29,8 @@ export const route: Route = {
 };
 
 async function handler() {
-    const baseUrl = 'https://app.klingai.com';
-    const targetUrl = 'https://app.klingai.com/cn/release-history';
+    const baseUrl = 'https://kling.ai';
+    const targetUrl = 'https://klingai.com/release-note/release-history';
 
     const items = await cache.tryGet(
         'klingai:release-history',
@@ -43,13 +43,14 @@ async function handler() {
 
             try {
                 // Wait for content to load
-                await page.waitForSelector('.content-item', { timeout: 10000 });
+                await page.waitForSelector('.content-item', { timeout: 15000 });
 
                 // Get page content
                 const content = await page.content();
                 const $ = load(content);
 
                 const items = [];
+                const seenDates = new Map<string, number>();
 
                 $('.content-item').each((i, element) => {
                     const $item = $(element);
@@ -59,8 +60,11 @@ async function handler() {
                     const isMajor = $item.find('.major').length > 0;
 
                     if (dateText && title) {
-                        const fullTitle = isMajor ? `【重磅】${title}` : title;
-                        const releaseNotesUrl = `${baseUrl}/cn/release-notes/${dateText}`;
+                        const fullTitle = isMajor && !title.startsWith('【') ? `【重磅】${title}` : title;
+                        const count = (seenDates.get(dateText) ?? 0) + 1;
+                        seenDates.set(dateText, count);
+                        const suffix = count > 1 ? `#${count}` : '';
+                        const releaseNotesUrl = `${baseUrl}/release-note/release-notes/${encodeURIComponent(dateText)}${suffix}`;
 
                         items.push({
                             title: fullTitle,
