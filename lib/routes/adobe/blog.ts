@@ -50,9 +50,7 @@ export const parseAdobeBlogItems = (rawItems: AdobeQueryIndexItem[], topic?: str
               .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
               .join(' ')
         : undefined;
-    const topicAliases = topicTag
-        ? new Set([topicTag.toLowerCase(), ...(topicTag.toLowerCase().startsWith('adobe ') ? [topicTag.slice(6).toLowerCase()] : [])])
-        : undefined;
+    const topicAliases = topicTag ? new Set([topicTag.toLowerCase(), ...(topicTag.toLowerCase().startsWith('adobe ') ? [topicTag.slice(6).toLowerCase()] : [])]) : undefined;
 
     let items = rawItems;
     if (topicAliases) {

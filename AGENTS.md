@@ -125,10 +125,11 @@
 53. **Comments Language**: Write code comments in English for consistency and accessibility.
 
 54. **Parentheses in Arrow Functions**: Always use parentheses around arrow function parameters, even for single parameters.
+
 ## Engineering Principles: DRY & Concurrency Locking Boundaries
 
 - **DRY targets "knowledge and decisions", not "code shape"**:
-  - Extract and reuse only when multiple places share the **same business rule, decision logic, or reason to change**; do not force abstractions into shared helpers or common packages merely because code looks structurally similar.
-  - Across service or module boundaries, prefer small amounts of duplication in data structures and parsing logic to preserve change isolation, independent evolution, and fault isolation (duplication is far cheaper than the wrong abstraction).
+    - Extract and reuse only when multiple places share the **same business rule, decision logic, or reason to change**; do not force abstractions into shared helpers or common packages merely because code looks structurally similar.
+    - Across service or module boundaries, prefer small amounts of duplication in data structures and parsing logic to preserve change isolation, independent evolution, and fault isolation (duplication is far cheaper than the wrong abstraction).
 - **Locks protect "critical-section invariants (code sequences)", not "individual data fields"**:
-  - Concurrency control must guard the **atomicity and state invariants spanning multi-step operations** (e.g., an entire check-then-act critical section), rather than assuming thread safety just because a struct has a mutex or uses thread-safe containers.
+    - Concurrency control must guard the **atomicity and state invariants spanning multi-step operations** (e.g., an entire check-then-act critical section), rather than assuming thread safety just because a struct has a mutex or uses thread-safe containers.

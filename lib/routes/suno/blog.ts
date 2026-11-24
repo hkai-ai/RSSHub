@@ -24,11 +24,7 @@ const normalizeCategorySlug = (tag?: string): string | undefined => {
     if (!tag) {
         return;
     }
-    const slug = tag
-        .replaceAll('+', ' ')
-        .trim()
-        .toLowerCase()
-        .replaceAll(/\s+/g, '-');
+    const slug = tag.replaceAll('+', ' ').trim().toLowerCase().replaceAll(/\s+/g, '-');
     return CATEGORY_SLUG_ALIASES[slug] ?? slug;
 };
 
