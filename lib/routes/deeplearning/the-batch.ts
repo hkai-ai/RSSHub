@@ -7,6 +7,93 @@ import { parseDate } from '@/utils/parse-date';
 
 import { renderDescription } from './templates/description';
 
+const unwrapNextImage = (src: string | undefined, rootUrl: string): string | undefined => {
+    if (!src) {
+        return undefined;
+    }
+    try {
+        const parsed = new URL(src, rootUrl);
+        if (parsed.pathname === '/_next/image') {
+            const inner = parsed.searchParams.get('url');
+            if (inner) {
+                return inner;
+            }
+        }
+        return parsed.href;
+    } catch {
+        return src;
+    }
+};
+
+const DATE_TEXT_RE = /^[A-Z][a-z]+\s+\d{1,2},\s+\d{4}$/;
+
+export const parseAppRouterArticles = (html: string, rootUrl: string, language?: string) => {
+    const $ = load(html);
+    const items: any[] = [];
+    const seen = new Set<string>();
+
+    $('article').each((_, element) => {
+        const $article = $(element);
+        const $postLink = $article
+            .find('a[href^="/the-batch/"]')
+            .filter((__, a) => {
+                const href = $(a).attr('href') || '';
+                return !href.includes('/the-batch/tag/') && href !== '/the-batch/' && href !== '/the-batch';
+            })
+            .first();
+        const href = $postLink.attr('href');
+        const title = $article.find('h2, h3, h4').first().text().trim() || $postLink.text().trim();
+        if (!href || !title) {
+            return;
+        }
+        const link = new URL(href, rootUrl).href;
+        if (seen.has(link)) {
+            return;
+        }
+        seen.add(link);
+
+        const slug = new URL(link).pathname.replace(/^\/the-batch\//, '').replace(/\/$/, '');
+        const excerpt = $article.find('p').first().text().trim();
+        const categories = $article
+            .find('a[href^="/the-batch/tag/"]')
+            .toArray()
+            .map((a) => $(a).text().trim())
+            .filter(Boolean);
+        const dateText = $article
+            .find('time, span')
+            .toArray()
+            .map((el) => $(el).text().trim())
+            .find((text) => DATE_TEXT_RE.test(text));
+        const pubDate = dateText ? parseDate(dateText) : undefined;
+        const img = $article.find('img').first();
+        const image = unwrapNextImage(img.attr('src') || img.attr('srcset')?.split(',')[0]?.trim().split(' ')[0], rootUrl);
+        const description = renderDescription({
+            images: image ? [{ src: image, alt: img.attr('alt') || title }] : undefined,
+            intro: excerpt || undefined,
+        });
+        const guid = `the-batch-${slug}`;
+
+        items.push({
+            title,
+            description,
+            pubDate: pubDate && !Number.isNaN(pubDate.getTime()) ? pubDate : undefined,
+            link,
+            category: categories,
+            guid,
+            id: guid,
+            content: {
+                html: description,
+                text: excerpt,
+            },
+            image,
+            banner: image,
+            language,
+        });
+    });
+
+    return items;
+};
+
 export const handler = async (ctx) => {
     const { tag } = ctx.req.param();
     const limit = ctx.req.query('limit') ? Number.parseInt(ctx.req.query('limit'), 10) : 1;
@@ -19,109 +106,144 @@ export const handler = async (ctx) => {
     const $ = load(response);
 
     const language = $('html').prop('lang');
+    const nextDataText = $('script#__NEXT_DATA__').text().trim();
 
-    const data = JSON.parse($('script#__NEXT_DATA__').text());
+    let items: any[] = [];
 
-    const nextBuildId = data.buildId;
-    const posts = data.props?.pageProps?.posts ?? [];
+    if (nextDataText) {
+        const data = JSON.parse(nextDataText);
+        const nextBuildId = data.buildId;
+        const posts = data.props?.pageProps?.posts ?? [];
 
-    let items = posts.slice(0, limit).map((item) => {
-        const title = item.title;
-        const description = renderDescription({
-            images: item.feature_image
-                ? [
-                      {
-                          src: item.feature_image,
-                          alt: item.feature_image_alt,
-                      },
-                  ]
-                : undefined,
-            intro: item.excerpt ?? item.custom_excerpt,
-        });
-        const image = item.feature_image;
-        const guid = `the-batch-${item.slug}`;
+        items = posts.slice(0, limit).map((item) => {
+            const title = item.title;
+            const description = renderDescription({
+                images: item.feature_image
+                    ? [
+                          {
+                              src: item.feature_image,
+                              alt: item.feature_image_alt,
+                          },
+                      ]
+                    : undefined,
+                intro: item.excerpt ?? item.custom_excerpt,
+            });
+            const image = item.feature_image;
+            const guid = `the-batch-${item.slug}`;
 
-        return {
-            title,
-            description,
-            pubDate: parseDate(item.published_at),
-            link: new URL(`_next/data/${nextBuildId}/the-batch/${item.slug}.json`, rootUrl).href,
-            category: item.tags.map((t) => t.name),
-            guid,
-            id: guid,
-            content: {
-                html: description,
-                text: item.excerpt ?? item.custom_excerpt,
-            },
-            image,
-            banner: image,
-            language,
-        };
-    });
-
-    items = await Promise.all(
-        items.map((item) =>
-            cache.tryGet(item.link, async () => {
-                const detailResponse = await ofetch(item.link);
-
-                const post = detailResponse.pageProps?.post ?? undefined;
-
-                if (!post) {
-                    return item;
-                }
-
-                const $$ = load(post.html);
-
-                $$('a').each((_, ele) => {
-                    if (ele.attribs.href?.includes('utm_campaign')) {
-                        const url = new URL(ele.attribs.href);
-                        url.searchParams.delete('utm_campaign');
-                        url.searchParams.delete('utm_source');
-                        url.searchParams.delete('utm_medium');
-                        url.searchParams.delete('_hsenc');
-                        ele.attribs.href = url.href;
-                    }
-                });
-
-                const title = post.title;
-                const description = renderDescription({
-                    images: post.feature_image
-                        ? [
-                              {
-                                  src: post.feature_image,
-                                  alt: post.feature_image_alt,
-                              },
-                          ]
-                        : undefined,
-                    intro: post.excerpt ?? post.custom_excerpt,
-                    description: $$.html(),
-                });
-                const guid = `the-batch-${post.slug}`;
-                const image = post.feature_image;
-
-                item.title = title;
-                item.description = description;
-                item.pubDate = parseDate(post.published_at);
-                item.link = new URL(`the-batch/${post.slug}`, rootUrl).href;
-                item.category = post.tags.map((t) => t.name);
-                item.author = post.authors.map((a) => a.name).join('/');
-                item.guid = guid;
-                item.id = guid;
-                item.content = {
+            return {
+                title,
+                description,
+                pubDate: parseDate(item.published_at),
+                link: new URL(`_next/data/${nextBuildId}/the-batch/${item.slug}.json`, rootUrl).href,
+                category: item.tags.map((t) => t.name),
+                guid,
+                id: guid,
+                content: {
                     html: description,
-                    text: post.excerpt ?? post.custom_excerpt,
-                };
-                item.image = image;
-                item.banner = image;
-                item.updated = parseDate(post.updated_at);
-                item.language = language;
+                    text: item.excerpt ?? item.custom_excerpt,
+                },
+                image,
+                banner: image,
+                language,
+            };
+        });
 
-                return item;
-            })
-        )
-    );
+        items = await Promise.all(
+            items.map((item) =>
+                cache.tryGet(item.link, async () => {
+                    const detailResponse = await ofetch(item.link);
 
-    const image = new URL($('meta[property="og:image"]').prop('content'), rootUrl).href;
+                    const post = detailResponse.pageProps?.post ?? undefined;
+
+                    if (!post) {
+                        return item;
+                    }
+
+                    const $$ = load(post.html);
+
+                    $$('a').each((_, ele) => {
+                        if (ele.attribs.href?.includes('utm_campaign')) {
+                            const url = new URL(ele.attribs.href);
+                            url.searchParams.delete('utm_campaign');
+                            url.searchParams.delete('utm_source');
+                            url.searchParams.delete('utm_medium');
+                            url.searchParams.delete('_hsenc');
+                            ele.attribs.href = url.href;
+                        }
+                    });
+
+                    const title = post.title;
+                    const description = renderDescription({
+                        images: post.feature_image
+                            ? [
+                                  {
+                                      src: post.feature_image,
+                                      alt: post.feature_image_alt,
+                                  },
+                              ]
+                            : undefined,
+                        intro: post.excerpt ?? post.custom_excerpt,
+                        description: $$.html(),
+                    });
+                    const guid = `the-batch-${post.slug}`;
+                    const image = post.feature_image;
+
+                    item.title = title;
+                    item.description = description;
+                    item.pubDate = parseDate(post.published_at);
+                    item.link = new URL(`the-batch/${post.slug}`, rootUrl).href;
+                    item.category = post.tags.map((t) => t.name);
+                    item.author = post.authors.map((a) => a.name).join('/');
+                    item.guid = guid;
+                    item.id = guid;
+                    item.content = {
+                        html: description,
+                        text: post.excerpt ?? post.custom_excerpt,
+                    };
+                    item.image = image;
+                    item.banner = image;
+                    item.updated = parseDate(post.updated_at);
+                    item.language = language;
+
+                    return item;
+                })
+            )
+        );
+    } else {
+        // Next.js App Router SSR layout
+        const ssrLimit = ctx.req.query('limit') ? limit : 10;
+        const parsed = parseAppRouterArticles(response, rootUrl, language).slice(0, ssrLimit);
+        items = await Promise.all(
+            parsed.map((item) =>
+                cache.tryGet(item.link, async () => {
+                    try {
+                        const detailHtml = await ofetch(item.link);
+                        const $$ = load(detailHtml);
+                        const $content = $$('article').first().length ? $$('article').first() : $$('main').first();
+                        const bodyHtml = $content.html()?.trim();
+                        if (bodyHtml) {
+                            const fullDescription = renderDescription({
+                                images: item.image ? [{ src: item.image, alt: item.title }] : undefined,
+                                description: bodyHtml,
+                            });
+                            item.description = fullDescription;
+                            item.content = {
+                                html: fullDescription,
+                                text: $content.text().trim(),
+                            };
+                        }
+                    } catch {
+                        // Keep list summary if detail fetch fails
+                    }
+                    return item;
+                })
+            )
+        );
+    }
+
+    const ogImage = $('meta[property="og:image"]').prop('content');
+    const image = ogImage ? new URL(ogImage, rootUrl).href : undefined;
 
     return {
         title: $('title').text(),

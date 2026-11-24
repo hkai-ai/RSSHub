@@ -49,13 +49,13 @@ async function handler(ctx) {
         },
     });
 
-    const datasets = data.Data.map((dataset) => ({
-        title: dataset.ChineseName,
-        description: dataset.Description,
+    const datasets = (data.Data || []).map((dataset) => ({
+        title: dataset.ChineseName || dataset.Name,
+        description: dataset.Description || '',
         author: dataset.CreatedBy,
         link: `${link}/${dataset.Namespace}/${dataset.Name}`,
         pubDate: parseDate(dataset.GmtCreate, 'X'),
-        category: dataset.UserDefineTags.split(','),
+        category: typeof dataset.UserDefineTags === 'string' && dataset.UserDefineTags.trim() ? dataset.UserDefineTags.split(',').filter(Boolean) : [],
         slug: `/${dataset.Namespace}/${dataset.Name}`,
     }));
 
@@ -64,10 +64,11 @@ async function handler(ctx) {
             cache.tryGet(item.link, async () => {
                 const { data } = await got(`${baseUrl}/api/v1/datasets${item.slug}`);
 
-                const content = data.Data.ReadmeContent.replaceAll(/img src="(?!http)(.*?)"/g, `img src="${baseUrl}/api/v1/datasets${item.slug}/repo?Revision=master&FilePath=$1&View=true"`);
+                const readme = typeof data?.Data?.ReadmeContent === 'string' ? data.Data.ReadmeContent : '';
+                const content = readme.replaceAll(/img src="(?!http)(.*?)"/g, `img src="${baseUrl}/api/v1/datasets${item.slug}/repo?Revision=master&FilePath=$1&View=true"`);
                 item.description = renderDescription({
                     description: item.description,
-                    md: md.render(content),
+                    md: content ? md.render(content) : '',
                 });
                 return item;
             })

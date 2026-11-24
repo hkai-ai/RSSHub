@@ -1,8 +1,63 @@
 import { load } from 'cheerio';
+import type { Context } from 'hono';
 
 import type { DataItem, Route } from '@/types';
-import got from '@/utils/got';
-import timezone from '@/utils/timezone';
+import { unlockWebsite } from '@/utils/bright-data-unlocker';
+import { parseDate } from '@/utils/parse-date';
+
+const link = 'https://www.tripo3d.ai/blog';
+
+export const parsePosts = (html: string): DataItem[] => {
+    const $ = load(html);
+    const items = new Map<string, DataItem>();
+    for (const element of $('article.featured-article, main a.group[href^="/blog/"]').toArray()) {
+        const card = $(element);
+        const href = card.is('a') ? card.attr('href') : card.find('h2 a').attr('href');
+        const title = card.find('h2, span.text-4').first().text();
+        const date = card
+            .find('span')
+            .toArray()
+            .map((span) => $(span).text())
+            .find((text) => /· \d{4}\/\d{2}\/\d{2}$/.test(text))
+            ?.match(/\d{4}\/\d{2}\/\d{2}$/)?.[0];
+        if (!href || !title || !date) {
+            continue;
+        }
+        const url = new URL(href, link).href;
+        const pubDate = parseDate(`${date} +0000`, 'YYYY/MM/DD ZZ');
+        if (items.has(url) || Number.isNaN(pubDate.getTime())) {
+            continue;
+        }
+        const image = card.find('img').first().attr('src');
+        items.set(url, {
+            title,
+            link: url,
+            pubDate,
+            description: card.find('p').first().html() || undefined,
+            author: card.find('.author-avatar').first().next('span').text() || undefined,
+            category: card
+                .find('span.rounded-full, div.rounded-full')
+                .map((_, tag) => $(tag).text())
+                .get(),
+            image: image ? new URL(image, link).href : undefined,
+        });
+    }
+    if (!items.size) {
+        throw new Error('No Tripo3D blog articles found');
+    }
+    return [...items.values()].toSorted((a, b) => new Date(b.pubDate!).getTime() - new Date(a.pubDate!).getTime());
+};
+
+export const handler = async (ctx: Context) => {
+    const category = ctx.req.param('category');
+    const items = parsePosts(await unlockWebsite(link));
+    return {
+        title: category ? `Tripo3D Blog - ${category}` : 'Tripo3D Blog',
+        link,
+        description: 'Articles, tutorials and the latest trends in 3D and AI from Tripo3D.',
+        item: category ? items.filter((item) => item.category?.some((tag) => tag.toLowerCase().includes(category.toLowerCase()))) : items,
+    };
+};
 
 export const route: Route = {
     path: '/blog/:category?',
@@ -10,134 +65,14 @@ export const route: Route = {
     example: '/tripo3d/blog',
     parameters: { category: 'Blog category (optional, defaults to all)' },
     features: {
-        requireConfig: false,
-        requirePuppeteer: false,
-        antiCrawler: false,
-        supportBT: false,
-        supportPodcast: false,
-        supportScihub: false,
+        requireConfig: [
+            { name: 'BRIGHTDATA_API_KEY', description: 'Bright Data API key for web unlocker' },
+            { name: 'BRIGHTDATA_UNLOCKER_ZONE', description: 'Bright Data zone identifier for web unlocker' },
+        ],
+        antiCrawler: true,
     },
-    radar: [
-        {
-            source: ['www.tripo3d.ai/blog', 'tripo3d.ai/blog'],
-            target: '/blog',
-        },
-    ],
+    radar: [{ source: ['www.tripo3d.ai/blog', 'tripo3d.ai/blog'], target: '/blog' }],
     name: 'Blog',
     maintainers: ['claude-code'],
     handler,
 };
-
-async function handler(ctx) {
-    const category = ctx.req.param('category');
-    const baseUrl = 'https://www.tripo3d.ai';
-    const url = `${baseUrl}/blog`;
-
-    const response = await got(url);
-    const $ = load(response.data);
-
-    // Extract the big featured news item
-    const featuredArticles: DataItem[] = [];
-    const featuredItem = $('a > .group').parent();
-    if (featuredItem.length > 0 && featuredItem.attr('href')) {
-        const title = featuredItem.find('h2').first().text().trim();
-        const link = new URL(featuredItem.attr('href')!, url).toString();
-
-        // Extract category/tag (first 1.5rem element)
-        const categoryText = featuredItem.find('div.rounded-full[class*="bg-"]').first().text().trim();
-
-        // Extract description - look for the specific description class first
-        const description = featuredItem.find('p').text().trim();
-
-        const image = featuredItem.find('img').attr('src');
-
-        let dateStr = '';
-        featuredItem.find('span').each((_, el) => {
-            const m = $(el)
-                .text()
-                .match(/^\s*·\s*(\d{4}\/\d{2}\/\d{2})\s*$/);
-            if (m) {
-                // m[1] 就是 2025/09/26
-                dateStr = m[1];
-                return false; // 找到一个就停止
-            }
-        });
-        if (title && link) {
-            featuredArticles.push({
-                title,
-                link,
-                description: description || title,
-                pubDate: timezone(new Date(dateStr), 0),
-                category: [categoryText].filter(Boolean),
-                image: image?.startsWith('http') ? image : image ? `${baseUrl}${image}` : undefined,
-            });
-        }
-    }
-
-    // Extract regular articles from the grid
-    const articles = $('a[href]:not([href=""])[class~="group"]')
-        .toArray()
-        .map((ele) => {
-            const item = $(ele);
-
-            const title = item.find('span.text-4').first().text().trim();
-            const link = new URL(item.attr('href')!, url).toString();
-
-            // Find description - it's usually in a div that's not part of the user section
-            const description = item.find('p').first().text().trim();
-
-            const image = item.find('img').attr('src');
-
-            // Extract tag/category
-            const tagText = featuredItem.find('span.rounded-full').first().text().trim();
-
-            let dateStr = '';
-            item.find('span').each((_, el) => {
-                const m = $(el)
-                    .text()
-                    .match(/^\s*·\s*(\d{4}\/\d{2}\/\d{2})\s*$/);
-                if (m) {
-                    // m[1] 就是 2025/09/26
-                    dateStr = m[1];
-                    return false; // 找到一个就停止
-                }
-            });
-            if (!title || !link) {
-                return null;
-            }
-
-            return {
-                title,
-                link,
-                description: description || title,
-                pubDate: timezone(new Date(dateStr), 0),
-                category: [tagText].filter(Boolean),
-                image: image?.startsWith('http') ? image : image ? `${baseUrl}${image}` : undefined,
-            };
-        })
-        .filter(Boolean);
-
-    const map = new Map<string, DataItem>();
-    for (const a of [...featuredArticles, ...articles]) {
-        if (a !== null) {
-            map.set(a.link!, a);
-        }
-    }
-    // Combine featured and regular articles
-    const allArticles = map
-        .entries()
-        .toArray()
-        .map((e) => e[1]);
-
-    // Filter by category if specified
-    const filteredArticles = category ? allArticles.filter((article) => article.category?.some((cat) => cat.toLowerCase().includes(category.toLowerCase()))) : allArticles;
-
-    const feedTitle = category ? `Tripo3D Blog - ${category.charAt(0).toUpperCase() + category.slice(1)}` : 'Tripo3D Blog';
-
-    return {
-        title: feedTitle,
-        link: url,
-        description: 'Uncover insightful articles, tutorials and the latest trends in the realm of 3D, AI and beyond from Tripo3D.',
-        item: filteredArticles,
-    };
-}

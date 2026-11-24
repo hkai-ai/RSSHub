@@ -33,65 +33,88 @@ export const route: Route = {
 const EXCEL_EPOCH_OFFSET = 25569;
 const MS_PER_DAY = 86_400_000;
 
-async function handler(ctx) {
-    const { topic } = ctx.req.param();
-    const limit = Number.parseInt(ctx.req.query('limit')) || 500;
-    const offset = Number.parseInt(ctx.req.query('offset')) || 0;
+export interface AdobeQueryIndexItem {
+    date?: string | number;
+    title?: string;
+    path?: string;
+    description?: string;
+    author?: string;
+    tags?: string | string[];
+    image?: string;
+}
 
-    // Convert topic slug to title case for tag matching
-    // e.g., "adobe-firefly" → "Adobe Firefly"
+export const parseAdobeBlogItems = (rawItems: AdobeQueryIndexItem[], topic?: string) => {
     const topicTag = topic
         ? topic
               .split('-')
               .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
               .join(' ')
         : undefined;
+    const topicAliases = topicTag
+        ? new Set([topicTag.toLowerCase(), ...(topicTag.toLowerCase().startsWith('adobe ') ? [topicTag.slice(6).toLowerCase()] : [])])
+        : undefined;
 
-    const apiUrl = 'https://blog.adobe.com/en/query-index.json';
-
-    const response = await ofetch(apiUrl, {
-        query: {
-            limit,
-            offset,
-        },
-    });
-
-    let items: Array<{ date?: string; title?: string; path?: string; description?: string; author?: string; tags?: string; image?: string }> = response.data || [];
-
-    // Filter by topic tag if specified
-    if (topicTag) {
+    let items = rawItems;
+    if (topicAliases) {
         items = items.filter((item) => {
             if (!item.tags) {
                 return false;
             }
             try {
-                const tags: string[] = JSON.parse(item.tags);
-                return tags.some((tag) => tag.toLowerCase() === topicTag.toLowerCase());
+                const tags: string[] = Array.isArray(item.tags) ? item.tags : JSON.parse(item.tags);
+                return tags.some((tag) => topicAliases.has(String(tag).toLowerCase()));
             } catch {
                 return false;
             }
         });
     }
 
-    // Transform the data
-    const feedItems = items.map((item) => {
-        let pubDate: Date | undefined;
-        if (item.date) {
-            const serial = Number.parseInt(item.date);
-            if (!Number.isNaN(serial)) {
-                pubDate = new Date((serial - EXCEL_EPOCH_OFFSET) * MS_PER_DAY);
+    return items
+        .map((item) => {
+            let pubDate: Date | undefined;
+            if (item.date !== undefined && item.date !== null && item.date !== '') {
+                const serial = typeof item.date === 'number' ? item.date : Number.parseInt(item.date, 10);
+                if (!Number.isNaN(serial)) {
+                    pubDate = new Date((serial - EXCEL_EPOCH_OFFSET) * MS_PER_DAY);
+                }
             }
-        }
 
-        return {
-            title: item.title || 'Untitled',
-            link: `https://blog.adobe.com${item.path}`,
-            description: item.description && item.description !== '0' ? item.description : '',
-            pubDate,
-            author: item.author || '',
-            image: item.image ? `https://blog.adobe.com${item.image}` : undefined,
-        };
+            return {
+                title: item.title || 'Untitled',
+                link: `https://blog.adobe.com${item.path}`,
+                description: item.description && item.description !== '0' ? item.description : '',
+                pubDate,
+                author: item.author || '',
+                image: item.image ? `https://blog.adobe.com${item.image}` : undefined,
+            };
+        })
+        .toSorted((a, b) => (b.pubDate?.getTime() ?? 0) - (a.pubDate?.getTime() ?? 0));
+};
+
+async function handler(ctx) {
+    const { topic } = ctx.req.param();
+    const limit = Number.parseInt(ctx.req.query('limit'), 10) || (topic ? 1000 : 500);
+    const offsetParam = ctx.req.query('offset');
+
+    const apiUrl = 'https://blog.adobe.com/en/query-index.json';
+    let offset = offsetParam === undefined ? undefined : Number.parseInt(offsetParam, 10) || 0;
+
+    // Adobe's query-index.json appends newer entries toward the end; when no explicit offset is
+    // provided, read total first and fetch the newest tail window so topic filters find recent posts.
+    if (offset === undefined) {
+        const meta = await ofetch<{ total?: number }>(apiUrl, { query: { limit: 1, offset: 0 } });
+        const total = Number(meta?.total || 0);
+        offset = total > limit ? total - limit : 0;
+    }
+
+    const response = await ofetch<{ data?: AdobeQueryIndexItem[] }>(apiUrl, {
+        query: {
+            limit,
+            offset,
+        },
     });
+
+    const feedItems = parseAdobeBlogItems(response.data || [], topic);
 
     const title = topic ? `Adobe Blog - ${topic.replaceAll('-', ' ')}` : 'Adobe Blog';
     const link = topic ? `https://blog.adobe.com/en/topics/${topic}` : 'https://blog.adobe.com';
