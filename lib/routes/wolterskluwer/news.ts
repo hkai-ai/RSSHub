@@ -1,33 +1,21 @@
-import { config } from '@/config';
 import type { Route } from '@/types';
+import { unlockWebsite } from '@/utils/bright-data-unlocker';
 import cache from '@/utils/cache';
-import ofetch from '@/utils/ofetch';
-import { parseDate } from '@/utils/parse-date';
+
+import { parseWoltersKluwerListing } from './pure';
 
 export const route: Route = {
     path: '/news/:types?',
     name: 'News',
     categories: ['journal'],
     example: '/wolterskluwer/news',
-    parameters: {
-        types: {
-            description: 'News type filter, multiple types can be separated by commas',
-            options: [
-                { value: '', label: 'All news' },
-                { value: 'news', label: 'News Page' },
-                { value: 'press', label: 'Press Release Page' },
-                { value: 'journal', label: 'Journal News Page' },
-                { value: 'news,press', label: 'News and Press Releases' },
-                { value: 'news,journal', label: 'News and Journal News' },
-                { value: 'press,journal', label: 'Press Releases and Journal News' },
-                { value: 'news,press,journal', label: 'All three types' },
-            ],
-        },
-    },
     features: {
-        requireConfig: false,
+        requireConfig: [
+            { name: 'BRIGHTDATA_API_KEY', description: 'Bright Data API key for bypassing Cloudflare' },
+            { name: 'BRIGHTDATA_UNLOCKER_ZONE', description: 'Bright Data web unlocker zone' },
+        ],
         requirePuppeteer: false,
-        antiCrawler: false,
+        antiCrawler: true,
         supportBT: false,
         supportPodcast: false,
         supportScihub: false,
@@ -41,137 +29,26 @@ export const route: Route = {
     maintainers: ['claude-code'],
     handler: async (ctx) => {
         const { types = '' } = ctx.req.param();
-
-        // Configure content type filters based on types parameter
-        const contentTypeFilters: string[] = [];
-        if (types) {
-            const typeArray = types.split(',').map((t) => t.trim());
-            for (const type of typeArray) {
-                switch (type) {
-                    case 'news':
-                        contentTypeFilters.push('News Page');
-                        break;
-                    case 'press':
-                        contentTypeFilters.push('Press Release Page');
-                        break;
-                    case 'journal':
-                        contentTypeFilters.push('Journal News Page');
-                        break;
-                    default:
-                        break;
-                }
-            }
-        } else {
-            // Default: all types
-            contentTypeFilters.push('News Page', 'Press Release Page', 'Journal News Page');
-        }
-
-        const searchPayload = {
-            DatabaseName: '',
-            SearchSettingItemId: '',
-            Query: '',
-            PageSize: 20,
-            Page: 0,
-            SortBy: {
-                FieldName: 'computededitorialrevisiondate_dt',
-                Direction: 'Descending',
-            },
-            ReturnFacetsFields: 'false',
-            Filters: [
-                {
-                    FieldName: 'language_s',
-                    Values: ['en'],
-                },
-                {
-                    FieldName: 'contenttype_s',
-                    Values: contentTypeFilters,
-                },
-            ],
-            RangeFilters: [],
-            Facets: [],
-            ProcessKeywordsInQuery: true,
-            FieldsToSearchIn: [],
-        };
-
-        const cacheKey = `wolterskluwer:news:${types || 'all'}`;
+        const url = 'https://www.wolterskluwer.com/en/news';
+        const cacheKey = `wolterskluwer:news:v2:${types || 'all'}`;
 
         return await cache.tryGet(
             cacheKey,
             async () => {
-                const response = await ofetch('https://www.wolterskluwer.com/api/search', {
-                    method: 'POST',
-                    headers: {
-                        'User-Agent': config.ua,
-                        'Content-Type': 'application/json',
-                        Accept: 'application/json',
-                        Referer: 'https://www.wolterskluwer.com/en/news',
-                    },
-                    body: JSON.stringify(searchPayload),
-                });
-
-                if (!response.Results || response.Results.length === 0) {
-                    throw new Error(`No news items found. Response structure: ${JSON.stringify(Object.keys(response))}`);
+                const html = await unlockWebsite(url);
+                const items = parseWoltersKluwerListing(html, '/en/news/');
+                if (!items.length) {
+                    throw new Error('No news items found on Wolters Kluwer newsroom page');
                 }
-
-                const items =
-                    response.Results?.map((item: any) => {
-                        const title = item.title_txt || 'Untitled';
-                        const link = item.url_s ? `https://www.wolterskluwer.com${item.url_s}` : '';
-                        const description = item.abstract_txt || '';
-                        const pubDate = item.editorialpublishdate_dt ? parseDate(item.editorialpublishdate_dt) : new Date();
-                        const category = item.interestarea_facet || item.contenttype_s || '';
-
-                        return {
-                            title,
-                            link,
-                            description,
-                            pubDate,
-                            category,
-                            guid: link || title,
-                        };
-                    }) || [];
-
-                // Generate title based on selected types
-                let feedTitle = 'Wolters Kluwer';
-                let descriptionSuffix = 'news';
-
-                if (types) {
-                    const typeArray = types.split(',').map((t) => t.trim());
-                    const typeLabels: string[] = [];
-                    for (const type of typeArray) {
-                        switch (type) {
-                            case 'news':
-                                typeLabels.push('News');
-                                break;
-                            case 'press':
-                                typeLabels.push('Press Releases');
-                                break;
-                            case 'journal':
-                                typeLabels.push('Journal News');
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                    if (typeLabels.length > 0) {
-                        feedTitle += ` ${typeLabels.join(' and ')}`;
-                        descriptionSuffix = typeLabels.join(' and ').toLowerCase();
-                    } else {
-                        feedTitle += ' All News';
-                    }
-                } else {
-                    feedTitle += ' All News';
-                }
-
                 return {
-                    title: feedTitle,
-                    link: 'https://www.wolterskluwer.com/en/news',
-                    description: `Latest ${descriptionSuffix} from Wolters Kluwer, a global leader in professional information solutions.`,
+                    title: 'Wolters Kluwer News',
+                    link: url,
+                    description: 'Latest news from Wolters Kluwer.',
                     item: items,
                 };
             },
             3600,
             false
-        ); // Cache for 1 hour
+        );
     },
 };

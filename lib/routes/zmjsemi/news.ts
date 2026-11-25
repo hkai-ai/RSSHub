@@ -1,11 +1,51 @@
 import { load } from 'cheerio';
 
 import type { Data, DataItem, Route } from '@/types';
-import cache from '@/utils/cache';
-import logger from '@/utils/logger';
 import ofetch from '@/utils/ofetch';
 import { parseDate } from '@/utils/parse-date';
 import timezone from '@/utils/timezone';
+
+const baseUrl = 'https://www.zmjsemi.com';
+
+export const parseZmjsemiNews = (html: string): DataItem[] => {
+    const $ = load(html);
+    const items: DataItem[] = [];
+    const seen = new Set<string>();
+
+    $('a.zz-a, a[href*="/news/company_new/"]').each((_, element) => {
+        const $link = $(element);
+        const href = $link.attr('href')?.trim();
+        if (!href) {
+            return;
+        }
+        const link = new URL(href, baseUrl).href;
+        if (seen.has(link)) {
+            return;
+        }
+        const title = $link.find('h3.zz-textb, h3').first().text().replaceAll(/\s+/g, ' ').trim();
+        if (!title) {
+            return;
+        }
+        seen.add(link);
+        const summary = $link.find('.zz-text').first().text().replaceAll(/\s+/g, ' ').trim();
+        const dateText = $link.find('.zz-date span.font20, .zz-date').first().text().trim().replaceAll('.', '-');
+        const parsed = dateText ? parseDate(dateText) : undefined;
+        const pubDate = parsed && !Number.isNaN(parsed.getTime()) ? timezone(parsed, 8) : undefined;
+        const imgSrc = $link.find('.public-img img.zz-img1, img').first().attr('src')?.trim();
+        const image = imgSrc ? new URL(imgSrc, baseUrl).href : undefined;
+        const description = image ? `<img src="${image}" alt="${title}"><br>${summary || title}` : summary || title;
+
+        items.push({
+            title,
+            link,
+            description,
+            pubDate,
+            image,
+        });
+    });
+
+    return items;
+};
 
 export const route: Route = {
     path: '/news/:page?',
@@ -32,56 +72,12 @@ export const route: Route = {
     maintainers: ['claude'],
     handler: async (ctx) => {
         const page = ctx.req.param('page') ?? '1';
-        const baseUrl = 'https://www.zmjsemi.com';
         const url = `${baseUrl}/news?page=${page}`;
-
-        const response = await ofetch(url);
-        const $ = load(response);
-
-        const items: DataItem[] = await Promise.all(
-            $('.zz-ul .zz-li')
-                .toArray()
-                .map((element) => {
-                    const $item = $(element);
-                    const $link = $item.find('a.zz-a');
-                    const link = baseUrl + $link.attr('href');
-                    const title = $item.find('h3.zz-textb').text().trim();
-                    const description = $item.find('.zz-text').text().trim();
-                    const dateText = $item.find('.zz-date span.font20').text().trim();
-                    const image = $item.find('.public-img img.zz-img1').attr('src');
-
-                    // Parse date (format: 2025.12.29)
-                    const pubDate = timezone(parseDate(dateText, 'YYYY.MM.DD'), 8);
-
-                    return cache.tryGet(link, async () => {
-                        try {
-                            const articleResponse = await ofetch(link);
-                            const $article = load(articleResponse);
-
-                            // Extract full article content
-                            const fullDescription = $article('.zz-content').html() || description;
-
-                            return {
-                                title,
-                                link,
-                                description: fullDescription,
-                                pubDate,
-                                image: image ? baseUrl + image : undefined,
-                            };
-                        } catch (error) {
-                            logger.error(`Failed to fetch article ${link}:`, error);
-                            return {
-                                title,
-                                link,
-                                description,
-                                pubDate,
-                                image: image ? baseUrl + image : undefined,
-                            };
-                        }
-                    });
-                })
-        );
-
+        const response = await ofetch<string>(url, { parseResponse: (txt) => txt });
+        const items = parseZmjsemiNews(response);
+        if (!items.length) {
+            throw new Error('No news items found on ZMJ Semi news page');
+        }
         return {
             title: '真茂佳半导体 - 新闻资讯',
             link: url,

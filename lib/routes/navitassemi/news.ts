@@ -1,9 +1,33 @@
 import { load } from 'cheerio';
 
-import type { Route } from '@/types';
+import type { DataItem, Route } from '@/types';
 import ofetch from '@/utils/ofetch';
 import { parseDate } from '@/utils/parse-date';
-import timezone from '@/utils/timezone';
+
+const rssUrl = 'https://ir.navitassemi.com/rss/news-releases.xml';
+
+export const parseNavitasNewsRss = (xml: string): DataItem[] => {
+    const $ = load(xml, { xmlMode: true });
+    return $('item')
+        .toArray()
+        .map((el) => {
+            const $el = $(el);
+            const title = $el.find('title').first().text().trim();
+            const link = $el.find('link').first().text().trim();
+            const description = $el.find('description').first().text().trim();
+            const pubDateRaw = $el.find('pubDate').first().text().trim();
+            const parsed = pubDateRaw ? parseDate(pubDateRaw) : undefined;
+            const guid = $el.find('guid').first().text().trim() || link;
+            return {
+                title,
+                link,
+                description,
+                pubDate: parsed && !Number.isNaN(parsed.getTime()) ? parsed : undefined,
+                guid,
+            };
+        })
+        .filter((item) => Boolean(item.title && item.link));
+};
 
 export const route: Route = {
     path: '/news',
@@ -13,60 +37,21 @@ export const route: Route = {
     maintainers: ['claude'],
     radar: [
         {
-            source: ['navitassemi.com/zh/news-zh/'],
+            source: ['navitassemi.com/zh/news-zh/', 'ir.navitassemi.com/'],
             target: '/news',
         },
     ],
     handler: async () => {
-        const url = 'https://navitassemi.com/zh/news-zh/';
-        const html = await ofetch(url);
-        const $ = load(html);
-
-        const items = $('article.et_pb_post')
-            .toArray()
-            .map((element) => {
-                const $article = $(element);
-
-                // Extract title and link
-                const titleElement = $article.find('h2.entry-title a');
-                const title = titleElement.text().trim();
-                const link = titleElement.attr('href') || '';
-
-                // Extract image
-                const image = $article.find('.et_pb_image_container img').attr('src') || '';
-
-                // Extract author
-                const author = $article.find('.author.vcard a').text().trim();
-
-                // Extract date
-                const dateText = $article.find('span.published').text().trim();
-                const pubDate = timezone(parseDate(dateText, 'M 月 D, YYYY'), 0);
-
-                // Extract categories
-                const category = $article
-                    .find('p.post-meta a[rel="tag"]')
-                    .toArray()
-                    .map((el) => $(el).text().trim());
-
-                // Extract description
-                const description = $article.find('.post-content .post-content-inner p').text().trim();
-
-                return {
-                    title,
-                    link,
-                    description,
-                    author,
-                    pubDate,
-                    category,
-                    image,
-                };
-            });
-
+        const xml = await ofetch<string>(rssUrl, { parseResponse: (txt) => txt });
+        const items = parseNavitasNewsRss(xml);
+        if (!items.length) {
+            throw new Error('No news releases found in Navitas Semiconductor RSS feed');
+        }
         return {
             title: 'Navitas Semiconductor - 新闻中心',
-            link: url,
+            link: 'https://navitassemi.com/zh/news-zh/',
             description: 'Navitas Semiconductor 新闻与公告',
-            language: 'zh-CN',
+            language: 'en',
             item: items,
         };
     },
