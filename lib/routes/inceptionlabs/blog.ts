@@ -84,7 +84,11 @@ async function handler(): Promise<Data> {
                         const $post = load(postHtml);
 
                         const h1 = $post('h1').first().text().replaceAll(/\s+/g, ' ').trim();
-                        const ogTitle = $post('meta[property="og:title"]').attr('content')?.replace(/\s*[–-]\s*Inception\s*$/i, '').trim() ?? '';
+                        const ogTitle =
+                            $post('meta[property="og:title"]')
+                                .attr('content')
+                                ?.replace(/\s*[–-]\s*Inception\s*$/i, '')
+                                .trim() ?? '';
                         const title = h1 || ogTitle || link;
 
                         const contentHtml = $post('[data-framer-name="Content"]').first().html()?.trim() ?? '';
