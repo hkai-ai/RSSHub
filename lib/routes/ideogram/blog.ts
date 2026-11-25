@@ -1,10 +1,11 @@
 import { load } from 'cheerio';
 
-import type { Data, Route } from '@/types';
-import { unlockWebsite } from '@/utils/bright-data-unlocker';
-import cache from '@/utils/cache';
+import type { Data, DataItem, Route } from '@/types';
+import ofetch from '@/utils/ofetch';
 import { parseDate } from '@/utils/parse-date';
-import timezone from '@/utils/timezone';
+
+const BASE_URL = 'https://ideogram.ai';
+const BLOG_URL = `${BASE_URL}/blog/`;
 
 export const route: Route = {
     path: '/blog',
@@ -13,16 +14,12 @@ export const route: Route = {
     example: '/ideogram/blog',
     maintainers: ['claude'],
     features: {
-        requireConfig: [
-            {
-                name: 'BRIGHTDATA_API_KEY',
-                description: 'Bright Data API key for bypassing anti-bot measures',
-            },
-            {
-                name: 'BRIGHTDATA_UNLOCKER_ZONE',
-                description: 'Bright Data zone identifier for web unlocker',
-            },
-        ],
+        requireConfig: false,
+        requirePuppeteer: false,
+        antiCrawler: false,
+        supportBT: false,
+        supportPodcast: false,
+        supportScihub: false,
     },
     radar: [
         {
@@ -30,129 +27,66 @@ export const route: Route = {
             target: '/blog',
         },
     ],
-    handler: async () => {
-        const baseUrl = 'https://ideogram.ai';
-        const blogUrl = `${baseUrl}/features`;
+    url: 'ideogram.ai/blog/',
+    handler: async (): Promise<Data> => {
+        const html = await ofetch<string>(BLOG_URL, { parseResponse: (txt) => txt });
+        const $ = load(html);
 
-        const items = await cache.tryGet(
-            blogUrl,
-            async () => {
-                const html = await unlockWebsite(blogUrl);
-                const $ = load(html);
-
-                const items: Array<{
-                    title: string;
-                    link: string;
-                    description: string;
-                    pubDate?: Date;
-                    image?: string;
-                }> = [];
-
-                const contentDiv = $('[data-framer-name="Content"]').first();
-                if (contentDiv.length > 0) {
-                    // Find title and link
-                    const titleLink = contentDiv.find('a').first();
-                    const title = contentDiv.find('h3').first().text().trim();
-                    const relativeLink = titleLink.attr('href');
-                    const link = relativeLink ? new URL(relativeLink, baseUrl).href : '';
-
-                    // Find date
-                    const dateLinks = contentDiv.find('a');
-                    let dateText = '';
-                    dateLinks.each((_, el) => {
-                        const text = $(el).text().trim();
-                        // Match date patterns like "Sept 4, 2025"
-                        if (/[A-Za-z]+\s+\d{1,2},\s+\d{4}/.test(text)) {
-                            dateText = text;
-                            return false; // break
-                        }
-                    });
-
-                    // Find description
-                    const descriptionContainer = contentDiv.find('[data-framer-component-type="RichTextContainer"]').last();
-                    let description = descriptionContainer.text().trim();
-                    // Remove "Read more" text if present
-                    description = description.replace(/Read more$/, '').trim();
-                    dateText = dateText.replace(/\b([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})\b/, (_, mon, day, year) => `${mon.slice(0, 3)} ${day}, ${year}`).trim();
-                    // Parse date
-                    const pubDate = timezone(parseDate(dateText, 'MMM D, YYYY', 'en'), 0);
-
-                    if (title && link) {
-                        items.push({
-                            title,
-                            link,
-                            description: description || title,
-                            pubDate,
-                        });
-                    }
-                    contentDiv.remove();
+        const seen = new Set<string>();
+        const items: DataItem[] = $('a.blog-card[href]')
+            .toArray()
+            .map((el): DataItem | null => {
+                const $el = $(el);
+                const href = $el.attr('href')?.trim() ?? '';
+                if (!href) {
+                    return null;
                 }
 
-                // Extract historical articles
-                // Find all containers with data-framer-name="Content"
-                const contentContainers = $('[data-framer-name="Content"]');
-                contentContainers.each((_, container) => {
-                    const $container = $(container);
+                const link = new URL(href, BASE_URL).href;
+                if (seen.has(link)) {
+                    return null;
+                }
 
-                    // Find title and link
-                    const titleLink = $container.find('a').first();
-                    const title = $container.find('h3').first().text().trim();
-                    const relativeLink = titleLink.attr('href');
+                const title = $el.find('.blog-card-title, h3, h2').first().text().replaceAll(/\s+/g, ' ').trim();
+                if (!title) {
+                    return null;
+                }
 
-                    if (!title || !relativeLink) {
-                        return;
-                    }
+                const excerpt = $el.find('.blog-card-excerpt, p').first().text().replaceAll(/\s+/g, ' ').trim();
+                const dateAttr = $el.find('time').first().attr('datetime')?.trim();
+                const dateText = $el.find('time').first().text().trim();
+                const parsedDate = dateAttr || dateText ? parseDate(dateAttr || dateText) : undefined;
+                const pubDate = parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate : undefined;
 
-                    const link = new URL(relativeLink, baseUrl).href;
+                const category = $el
+                    .find('.blog-card-meta span')
+                    .toArray()
+                    .map((span) => $(span).text().trim())
+                    .filter(Boolean);
+                const image = $el.find('img.blog-card-image, img').first().attr('src')?.trim() || undefined;
 
-                    // Find date
-                    const dateElements = $container.find('h3');
-                    let dateText = '';
-                    dateElements.each((_, el) => {
-                        const text = $(el).text().trim();
-                        // Match date patterns
-                        if (/[A-Za-z]+\s+\d{1,2},\s+\d{4}/.test(text)) {
-                            dateText = text;
-                            return false; // break
-                        }
-                    });
+                seen.add(link);
+                return {
+                    title,
+                    link,
+                    description: excerpt || title,
+                    pubDate,
+                    category: category.length > 0 ? category : undefined,
+                    image,
+                };
+            })
+            .filter((item): item is DataItem => item !== null);
 
-                    // Find image - look for nearby image link
-                    let image = '';
-                    const parentContainer = $container.parent();
-                    const imageLink = parentContainer.find('a[data-framer-name="Image"]').first();
-                    if (imageLink.length > 0) {
-                        const imgElement = imageLink.find('img').first();
-                        if (imgElement.length > 0) {
-                            image = imgElement.attr('src') || '';
-                        }
-                    }
-
-                    // Parse date
-                    dateText = dateText.replace(/\b([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})\b/, (_, mon, day, year) => `${mon.slice(0, 3)} ${day}, ${year}`).trim();
-                    // Parse date
-                    const pubDate = timezone(parseDate(dateText, 'MMM D, YYYY', 'en'), 0);
-
-                    items.push({
-                        title,
-                        link,
-                        description: title,
-                        pubDate: pubDate && !Number.isNaN(pubDate.getTime()) ? pubDate : undefined,
-                        image: image || undefined,
-                    });
-                });
-                return items;
-            },
-            3600,
-            false
-        );
+        if (items.length === 0) {
+            throw new Error('No articles found on Ideogram Blog');
+        }
 
         return {
             title: 'Ideogram Blog',
-            link: blogUrl,
-            description: 'Latest updates and features from Ideogram AI',
+            link: BLOG_URL,
+            description: 'Technical details, workflow tips, and updates from Ideogram AI',
+            language: 'en' as const,
             item: items,
-            language: 'en',
-        } as Data;
+        };
     },
 };
