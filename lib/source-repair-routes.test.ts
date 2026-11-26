@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseCrossrefJournalWorks } from './routes/acs/journal';
+import { parseLawTechnologyToday } from './routes/americanbar/law-technology-today';
+import { parseBibiGptBlog } from './routes/bibigpt/blog';
+import { parseBioItWorldNews } from './routes/bio-itworld/news';
 import { parseCerebrasBlog } from './routes/cerebras/pure';
 import { parseDigitalingArticles } from './routes/digitaling/articles';
 import { parseHi3dBlog } from './routes/hi3d/blog';
 import { parseLegalMosaicArticles } from './routes/legalmosaic/articles';
+import { parseLmsysBlog } from './routes/lmsys/blog';
 import { parseNavitasNewsRss } from './routes/navitassemi/news';
+import { parseNeotaLogicBlog } from './routes/neotalogic/blog';
 import { parseNovosnsArticle, parseNovosnsSitemap } from './routes/novosns/news';
+import { parsePubMedSummaries } from './routes/pubmed/search';
 import { parseTiNewsRss } from './routes/ti/news';
 import { parseUntcNews } from './routes/unt-c/news';
 import { parseWoltersKluwerListing } from './routes/wolterskluwer/pure';
@@ -187,5 +194,107 @@ describe('Online source repair RSSHub routes', () => {
         expect(items[0].link).toBe('https://www.legalmosaic.com/articles/legal-transformation/');
         expect(items[0].author).toBe('Mark A. Cohen');
         expect(items[0].pubDate).toBeInstanceOf(Date);
+    });
+
+    it('parses LMSYS Next.js RSC blog entries cleanly', () => {
+        const html = String.raw`\"slug\":\"2026-11-23-ernie55\",\"title\":\"Toward the Decode Limit \u0026 Fast Serving\",\"author\":\"LMSYS Team\",\"date\":\"November 23, 2026\",\"excerpt\":\"Low latency inference benchmark.\"`;
+        const items = parseLmsysBlog(`{${html}}`);
+        expect(items).toHaveLength(1);
+        expect(items[0].title).toBe('Toward the Decode Limit & Fast Serving');
+        expect(items[0].link).toBe('https://www.lmsys.org/blog/2026-11-23-ernie55/');
+        expect(items[0].author).toBe('LMSYS Team');
+        expect(items[0].pubDate).toBeInstanceOf(Date);
+    });
+
+    it('parses Neota Logic Webflow blog cards', () => {
+        const html = `
+            <div class="bl-grid w-dyn-items">
+                <div class="w-dyn-item">
+                    <a href="/blog/email-workflow-automation-for-legal" class="bl-card">
+                        <div class="bl-card-meta"><div>November 24, 2026</div></div>
+                        <h2 class="bl-card-title">Email Workflow Automation for Legal Teams</h2>
+                        <p class="bl-card-excerpt">Governed AI workflow guide.</p>
+                    </a>
+                </div>
+            </div>
+        `;
+        const items = parseNeotaLogicBlog(html);
+        expect(items).toHaveLength(1);
+        expect(items[0].link).toBe('https://www.neotalogic.com/blog/email-workflow-automation-for-legal');
+        expect(items[0].description).toBe('Governed AI workflow guide.');
+        expect(items[0].pubDate).toBeInstanceOf(Date);
+    });
+
+    it('parses BibiGPT blog cards with Chinese publication dates', () => {
+        const html = `
+            <a href="/zh/blog/posts/bibigpt-newsletter-2026-11-23">
+                <h3>BibiGPT v4.833.0 更新：竖着刷要点</h3>
+                <p>发布于 2026年11月23日</p>
+                <p>处理队列跑完一批，点刷这批就能竖着刷要点。</p>
+            </a>
+        `;
+        const items = parseBibiGptBlog(html);
+        expect(items).toHaveLength(1);
+        expect(items[0].link).toBe('https://bibigpt.cn/zh/blog/posts/bibigpt-newsletter-2026-11-23');
+        expect(items[0].title).toBe('BibiGPT v4.833.0 更新：竖着刷要点');
+        expect(items[0].pubDate).toBeInstanceOf(Date);
+    });
+
+    it('parses Crossref ACS journal works and PubMed E-utilities summaries', () => {
+        const acsItems = parseCrossrefJournalWorks([
+            {
+                title: ['Side-Chain Engineering in ACS Nano'],
+                DOI: '10.1021/acsnano.6c13408',
+                URL: 'https://doi.org/10.1021/acsnano.6c13408',
+                published: { 'date-parts': [[2026, 11, 25]] },
+                author: [{ given: 'Mingxuan', family: 'Jia' }],
+                abstract: '<jats:p>Abstract text here.</jats:p>',
+            },
+        ]);
+        expect(acsItems).toHaveLength(1);
+        expect(acsItems[0].doi).toBe('10.1021/acsnano.6c13408');
+        expect(acsItems[0].description).toBe('Abstract text here.');
+
+        const pmItems = parsePubMedSummaries(['42804948'], {
+            result: {
+                '42804948': {
+                    uid: '42804948',
+                    title: 'Prompt Engineering for Clinical LLM Workflows.',
+                    sortpubdate: '2026/11/20 00:00',
+                    source: 'JAMA',
+                    authors: [{ name: 'Smith J' }],
+                },
+            },
+        });
+        expect(pmItems).toHaveLength(1);
+        expect(pmItems[0].link).toBe('https://pubmed.ncbi.nlm.nih.gov/42804948/');
+        expect(pmItems[0].title).toBe('Prompt Engineering for Clinical LLM Workflows');
+    });
+
+    it('parses Bio-IT World dated news links and ABA Law Technology Today fallback cards', () => {
+        const bioHtml = `
+            <article>
+                <a href="/news/2026/11/25/before-a-life-sciences-dispute-escalates"><h3>Before a Life Sciences Dispute Escalates</h3></a>
+                <p>Mediation vs arbitration insights.</p>
+            </article>
+        `;
+        const bioItems = parseBioItWorldNews(bioHtml);
+        expect(bioItems).toHaveLength(1);
+        expect(bioItems[0].link).toBe('https://www.bio-itworld.com/news/2026/11/25/before-a-life-sciences-dispute-escalates');
+        expect(bioItems[0].pubDate).toBeInstanceOf(Date);
+
+        const abaHtml = `
+            <article>
+                <a href="/groups/law_practice/resources/law-technology-today/2026/when-should-lawyers-disclose-ai-use/">
+                    <h3>When Should Lawyers Disclose AI Use?</h3>
+                </a>
+                <span>Nov 12, 2026</span>
+                <p>Practical ethics guidance for legal teams.</p>
+            </article>
+        `;
+        const abaItems = parseLawTechnologyToday(abaHtml);
+        expect(abaItems).toHaveLength(1);
+        expect(abaItems[0].link).toBe('https://www.americanbar.org/groups/law_practice/resources/law-technology-today/2026/when-should-lawyers-disclose-ai-use/');
+        expect(abaItems[0].pubDate).toBeInstanceOf(Date);
     });
 });
