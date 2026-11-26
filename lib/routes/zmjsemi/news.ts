@@ -15,11 +15,11 @@ export const parseZmjsemiNews = (html: string): DataItem[] => {
     $('a.zz-a, a[href*="/news/company_new/"]').each((_, element) => {
         const $link = $(element);
         const href = $link.attr('href')?.trim();
-        if (!href) {
+        if (!href || href.startsWith('javascript:') || !href.includes('/news/')) {
             return;
         }
         const link = new URL(href, baseUrl).href;
-        if (seen.has(link)) {
+        if (!/^https?:\/\//.test(link) || seen.has(link)) {
             return;
         }
         const title = $link.find('h3.zz-textb, h3').first().text().replaceAll(/\s+/g, ' ').trim();

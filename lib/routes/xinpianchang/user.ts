@@ -17,11 +17,19 @@ interface ProfileWork {
     author?: { userinfo?: { id?: number; username?: string } };
 }
 
-export const parseProfile = (html: string) => {
+export const extractProfileWorksResponse = (html: string): WorksResponse => {
     const $ = load(html);
-    const data = JSON.parse($('#__NEXT_DATA__').text()) as { props: { pageProps: { articleData: { list: ProfileWork[] } } } };
-    return parsePublicWorks({ status: 0, data: data.props.pageProps.articleData });
+    const raw = $('#__NEXT_DATA__').text().trim();
+    if (!raw) {
+        return { status: -1 };
+    }
+    const data = JSON.parse(raw) as { props?: { pageProps?: { articleData?: { list?: ProfileWork[] } | ProfileWork[] } } };
+    const articleData = data.props?.pageProps?.articleData;
+    const list = Array.isArray(articleData) ? articleData : (articleData?.list ?? []);
+    return { status: 0, data: { list } };
 };
+
+export const parseProfile = (html: string) => parsePublicWorks(extractProfileWorksResponse(html));
 
 interface WorksResponse {
     status: number;
@@ -34,7 +42,7 @@ export const parsePublicWorks = (response: WorksResponse) =>
             .filter((entry) => !entry.is_private)
             .map((entry) => ({
                 title: entry.title,
-                link: entry.web_url,
+                link: entry.web_url || `https://www.xinpianchang.com/a${entry.id}`,
                 guid: `xinpianchang:${entry.id}`,
                 description: entry.content ?? entry.description ?? '',
                 pubDate: entry.publish_time ? parseDate(entry.publish_time * 1000) : undefined,
@@ -45,11 +53,21 @@ export const parsePublicWorks = (response: WorksResponse) =>
 
 export const parseOriginalWorks = (response: WorksResponse, uid: string) => parsePublicWorks({ ...response, data: { list: (response.data?.list ?? []).filter((entry) => String(entry.author?.userinfo?.id) === uid) } });
 
-export const fetchPublicWorks = (uid: string) =>
-    ofetch<WorksResponse>(`https://www.xinpianchang.com/api/xpc/v2/user/${uid}/articles`, {
-        query: { page: 1, per_page: 20, public_status: 0, order: 'new' },
-        responseType: 'json',
-    });
+export const fetchPublicWorks = async (uid: string): Promise<WorksResponse> => {
+    try {
+        const apiRes = await ofetch<WorksResponse>(`https://www.xinpianchang.com/api/xpc/v2/user/${uid}/articles`, {
+            query: { page: 1, per_page: 20, public_status: 0, order: 'new' },
+            responseType: 'json',
+        });
+        if (apiRes?.status === 0 && (apiRes.data?.list?.length ?? 0) > 0) {
+            return apiRes;
+        }
+    } catch {
+        // Fall back to Next.js SSR profile payload when public API is unavailable or empty.
+    }
+    const html = await ofetch<string>(`https://www.xinpianchang.com/u${uid}`, { parseResponse: (txt) => txt });
+    return extractProfileWorksResponse(html);
+};
 
 export const route: Route = {
     path: '/user/:uid',

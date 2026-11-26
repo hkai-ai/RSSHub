@@ -5,6 +5,7 @@ import { parseLawTechnologyToday } from './routes/americanbar/law-technology-tod
 import { parseBibiGptBlog } from './routes/bibigpt/blog';
 import { parseBioItWorldNews } from './routes/bio-itworld/news';
 import { parseCerebrasBlog } from './routes/cerebras/pure';
+import { parseCrossrefWorks } from './routes/crossref/journal';
 import { parseDigitalingArticles } from './routes/digitaling/articles';
 import { parseHi3dBlog } from './routes/hi3d/blog';
 import { parseLegalMosaicArticles } from './routes/legalmosaic/articles';
@@ -16,6 +17,7 @@ import { parsePubMedSummaries } from './routes/pubmed/search';
 import { parseTiNewsRss } from './routes/ti/news';
 import { parseUntcNews } from './routes/unt-c/news';
 import { parseWoltersKluwerListing } from './routes/wolterskluwer/pure';
+import { extractProfileWorksResponse, parseOriginalWorks } from './routes/xinpianchang/user';
 import { parseZmjsemiNews } from './routes/zmjsemi/news';
 
 describe('Online source repair RSSHub routes', () => {
@@ -296,5 +298,44 @@ describe('Online source repair RSSHub routes', () => {
         expect(abaItems).toHaveLength(1);
         expect(abaItems[0].link).toBe('https://www.americanbar.org/groups/law_practice/resources/law-technology-today/2026/when-should-lawyers-disclose-ai-use/');
         expect(abaItems[0].pubDate).toBeInstanceOf(Date);
+    });
+
+    it('filters javascript:; links in ZMJ Semi, parses Crossref journal works, and falls back to Xinpianchang __NEXT_DATA__', () => {
+        const zmjHtml = `
+            <a class="zz-a" href="/news/company_new/41"><h3 class="zz-textb">真茂佳新品</h3></a>
+            <a class="zz-a" href="javascript:;"><h3 class="zz-textb">MOSFET</h3></a>
+        `;
+        const zmjItems = parseZmjsemiNews(zmjHtml);
+        expect(zmjItems).toHaveLength(1);
+        expect(zmjItems[0].link).toBe('https://www.zmjsemi.com/news/company_new/41');
+
+        const crItems = parseCrossrefWorks([
+            {
+                title: ['Science Advances Sample Paper'],
+                DOI: '10.1126/sciadv.aek0894',
+                URL: 'https://doi.org/10.1126/sciadv.aek0894',
+                published: { 'date-parts': [[2026, 11, 27]] },
+                author: [{ given: 'Jane', family: 'Doe' }],
+            },
+        ]);
+        expect(crItems).toHaveLength(1);
+        expect(crItems[0].guid).toBe('10.1126/sciadv.aek0894');
+
+        const xpcHtml = `<script id="__NEXT_DATA__">${JSON.stringify({
+            props: {
+                pageProps: {
+                    articleData: {
+                        list: [
+                            { id: 101, title: 'Shotlab 原创', web_url: 'https://www.xinpianchang.com/a101', publish_time: 1_794_230_389, author: { userinfo: { id: 16_448_630, username: 'Shotlab无限世界赛' } } },
+                            { id: 102, title: '合作作品', web_url: 'https://www.xinpianchang.com/a102', publish_time: 1_794_230_389, author: { userinfo: { id: 999, username: 'Other' } } },
+                        ],
+                    },
+                },
+            },
+        })}</script>`;
+        const xpcResp = extractProfileWorksResponse(xpcHtml);
+        const originals = parseOriginalWorks(xpcResp, '16448630');
+        expect(originals).toHaveLength(1);
+        expect(originals[0].title).toBe('Shotlab 原创');
     });
 });
