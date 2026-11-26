@@ -48,28 +48,38 @@ async function handler(ctx) {
         },
     });
 
-    const studios = data.Data.Studios.map((studio) => ({
-        title: studio.ChineseName || studio.Name,
-        description: studio.Description,
-        author: studio.CreatedBy,
-        link: `${link}/${studio.Path}/${studio.Name}`,
-        pubDate: parseDate(studio.CreatedTime, 'X'),
-        category: studio.Tags,
-        slug: `/${studio.Path}/${studio.Name}`,
-        coverImage: studio.CoverImage.startsWith('https://img.alicdn.com/') ? undefined : studio.CoverImage,
-    }));
+    const studios = (data?.Data?.Studios || []).map((studio) => {
+        const coverImage = typeof studio.CoverImage === 'string' && studio.CoverImage && !studio.CoverImage.startsWith('https://img.alicdn.com/') ? studio.CoverImage : undefined;
+        return {
+            title: studio.ChineseName || studio.Name,
+            description: studio.Description || '',
+            author: studio.CreatedBy,
+            link: `${link}/${studio.Path}/${studio.Name}`,
+            pubDate: studio.CreatedTime ? parseDate(studio.CreatedTime, 'X') : undefined,
+            category: Array.isArray(studio.Tags) ? studio.Tags : [],
+            slug: `/${studio.Path}/${studio.Name}`,
+            coverImage,
+        };
+    });
 
     const items = await Promise.all(
         studios.map((item) =>
             cache.tryGet(item.link, async () => {
-                const { data } = await got(`${baseUrl}/api/v1/studio${item.slug}`);
-
-                const content = data.Data.ReadMeContent;
-                item.description = renderDescription({
-                    coverImage: item.coverImage,
-                    description: item.description,
-                    md: md.render(content),
-                });
+                try {
+                    const { data } = await got(`${baseUrl}/api/v1/studio${item.slug}`);
+                    const content = typeof data?.Data?.ReadMeContent === 'string' ? data.Data.ReadMeContent : '';
+                    item.description = renderDescription({
+                        coverImage: item.coverImage,
+                        description: item.description,
+                        md: content ? md.render(content) : '',
+                    });
+                } catch {
+                    item.description = renderDescription({
+                        coverImage: item.coverImage,
+                        description: item.description,
+                        md: '',
+                    });
+                }
 
                 return item;
             })
